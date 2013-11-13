@@ -16,3 +16,6 @@
 *.exe
 *.out
 *.app
+
+# Directory shit
+.directory
