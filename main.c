@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     fpid = pidOpen(inmon, pidpath);
 
     //cambio MAC del monitor (uso di macchanger)
-    /*macchanger(ifcnf, macchg, inmon);     fa casino con le interfacce */
+    macchanger(inmon);
 
     //imposto stop monitor
     strcat(stopmon, inmon);
