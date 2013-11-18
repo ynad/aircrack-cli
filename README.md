@@ -1,4 +1,14 @@
 Aircrack-CLI - Command Line Interface
 =====================================
 
-Versione beta-1
+Version beta-03
+
+
+    TODO:
+    - options from arguments: output file(s), terminal, etc.
+	- jammer
+	- full translations
+
+
+    BUGS:
+

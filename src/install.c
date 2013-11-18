@@ -5,6 +5,10 @@
         install.c
 **/
 
+#ifndef __linux__
+#error Compatible with Linux only!
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>

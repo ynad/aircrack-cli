@@ -17,6 +17,8 @@
 *.out
 *.app
 
-# Directory shit
+# Other shit
 .directory
 .gitignore
+bin
+obj
