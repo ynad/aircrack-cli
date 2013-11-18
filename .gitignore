@@ -22,3 +22,5 @@
 .gitignore
 bin
 obj
+*.c~
+*.h~
