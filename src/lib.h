@@ -1,16 +1,30 @@
+/**CHeaderFile*****************************************************************
+
+  FileName    [lib.h]
+
+  PackageName [Aircrack-CLI]
+
+  Synopsis    [Aircrack Command Line Interface - Library functions]
+
+  Description [Command Line Interface for Aircrack-ng 
+  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+
+  Author      [ynad]
+
+  License     [GPLv2, see LICENSE.md]
+
+  Revision    [beta-03, 2013-11-21]
+
+******************************************************************************/
+
+
 #ifndef LIB_H_INCLUDED
 #define LIB_H_INCLUDED
 
-/**
-        Aircrack - Command Line Interface
-
-		Library functions for Aircrack-CLI
-        lib.h
-**/
 
 #define BUFF 255
-#define FAIL 1
-#define SUCCESS 0
+#define MACLST 100
+#define MACLEN 17
 #define FALSE 0
 #define TRUE 1
 
@@ -25,6 +39,9 @@ void freeMem(char **, int);
 
 /* Acquisition of MAC list */
 char **getList(char **, int *);
+
+/* Check MAC address format */
+int checkMac(char *);
 
 /* Determines number of existing/configured CPUs */
 int procNumb();

@@ -1,21 +1,35 @@
+/**CHeaderFile*****************************************************************
+
+  FileName    [install.h]
+
+  PackageName [Aircrack-CLI]
+
+  Synopsis    [Aircrack Command Line Interface - Installer handler]
+
+  Description [Command Line Interface for Aircrack-ng 
+  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+
+  Author      [ynad, stethewwolf]
+
+  License     [GPLv2, see LICENSE.md]
+
+  Revision    [beta-03, 2013-11-22]
+
+******************************************************************************/
+
+
 #ifndef INSTALL_H_INCLUDED
 #define INSTALL_H_INCLUDED
 
-/**
-        Aircrack - Command Line Interface
 
-        Gestore installazioni
-        install.h
-**/
+/* Dependencies installer */
+int depInstall();
 
-/* installatore dipendenze */
-int dep_install();
-
-/* controllo versione distribuzione OS  */
+/* OS version checker */
 char checkDistro();
 
-/* installatore aircrack */
-int akng_install();
+/* Aircrack-ng downloader and installer */
+int akngInstall();
 
 
 #endif // INSTALL_H_INCLUDED

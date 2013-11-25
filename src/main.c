@@ -1,9 +1,22 @@
-/**
-        Aircrack - Command Line Interface
+/**CFile***********************************************************************
 
-        Interfaccia principale
-        main.c
-**/
+  FileName    [main.c]
+
+  PackageName [Aircrack-CLI]
+
+  Synopsis    [Aircrack Command Line Interface - Main module]
+
+  Description [Command Line Interface for Aircrack-ng 
+  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+
+  Author      [ynad]
+
+  License     [GPLv2, see LICENSE.md]
+  
+  Revision    [beta-03, 2013-11-24]
+
+******************************************************************************/
+
 
 #ifndef __linux__
 #error Compatible with Linux only!
@@ -14,38 +27,42 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <errno.h>
 
-//general library header
+//library functions header
 #include "lib.h"
-//header installatore
+//installer handler header
 #include "install.h"
 
-#define MACLEN 17
-#define MACLST 100
-#define STDWLAN " wlan0 "    //LASCIARE gli spazi prima e dopo il nome interfaccia!
+//version code - keep UPDATED!
+#define VERS "beta-03"
+
+#define STDWLAN " wlan0 "    //LEAVE spaces before and after interface name!
 #define NETWSTOP "service network-manager stop"
 #define NETWSTART "service network-manager start"
 #define CLEAR "clear"
 
-#define VERS "beta-03"    //codice versione  -  TENERE AGGIORNATO!
+//uncomment to enable debugging functions
 //#define DEBUG
 
-//prototipi
-void printHeader();
-void printSyntax(char*);
-void installer();
-char **deauthClient(char *, char *, char **, int *);
-int jammer(char *, char *, char **, int);
-void stopMonitor(char*, char*, FILE*);
-void netwCheck(char);
-int checkExit(char c, char *, char *, char *, FILE *);
+//prototypes
+static void printHeader();
+static void printSyntax(char*);
+static void installer();
+static char **deauthClient(char *, char *, char **, int *);
+static int jammer(char *, char *, char **, int);
+static void stopMonitor(char*, char*);
+static void netwCheck(char);
+static int checkExit(char c, char *, char *, char *);
 
+//error variable
+//xextern int errno;
 
 
 int main(int argc, char *argv[])
 {
     //variabili generali
-    int opz, inst=TRUE, listdim;
+    int opz, inst=TRUE, listdim=0;
     FILE *fpid;
 
     //stringhe programma
@@ -75,10 +92,36 @@ int main(int argc, char *argv[])
 		printSyntax(argv[0]);
     }
 
+	/*
+	if (getcwd(montmp, BUFF) == NULL) {
+        fprintf(stderr, "\nError reading current path.\n");
+        return (EXIT_FAILURE);
+    }
+	printf("argv[0]=%s\npath=%s\n", argv[0], montmp);
+	for (opz=strlen(argv[0]); opz>0; opz--) {
+		if (argv[0][opz] == '/' && argv[0][opz-1] != '.') {
+			opz--;
+			while (argv[0][opz] != '/') {
+				bssid[listdim++] = argv[0][opz--];
+			}
+			bssid[listdim] = '\0';
+		}
+	}
+	printf("reverse: %s\n", bssid);
+	listdim = strlen(montmp);
+	montmp[listdim++] = '/';
+	for (opz=strlen(bssid)-1; opz>=0; opz--) {
+		montmp[listdim++] = bssid[opz];
+	}
+	printf("final: %s\n", montmp);
+	strcat(montmp, "/airjammer.bin");
+	system(montmp);
+	*/
+
     //controllo diritti esecuzione
     if (getgid() != 0) {
         printf("Eseguire il programma con diritti di amministratore!\n\n");
-		return FAIL;
+		return (EXIT_FAILURE);
     }
 
     //se non escluso eseguo parte installazioni
@@ -87,12 +130,12 @@ int main(int argc, char *argv[])
 
     c = '0';
     // arresto processi potenzialmente nocivi
-    printf("\nVuoi terminare \"network-manager\"? [S-N]\n");
-    while (c != 'S' && c != 'N') {
+    printf("\nVuoi terminare \"network-manager\"?  [Y-N]\n");
+    while (c != 'Y' && c != 'N') {
         scanf("%c", &c);
         c = toupper(c);
     }
-    if (c == 'S')
+    if (c == 'Y')
         system(NETWSTOP);
 
 
@@ -103,6 +146,8 @@ int main(int argc, char *argv[])
 
     //gestione PID file
     fpid = pidOpen(inmon, pidpath);
+	if (fpid != NULL)
+		fclose(fpid);
 
     //cambio MAC del monitor (uso di macchanger)
     macchanger(inmon);
@@ -117,14 +162,10 @@ int main(int argc, char *argv[])
     //aquisizione dati
     printf("\nNumero di canale (-1 per clean-exit):\t");
     scanf("%s", can);
-    checkExit(c, can, stopmon, pidpath, fpid);
+    checkExit(c, can, stopmon, pidpath);
 
     printf("Identificativo BSSID:\t");
     scanf("%s", bssid);
-
-    #ifdef DEBUG
-    printf("---bssid: %s, canale: %s\n", bssid, can);
-    #endif
 
     //chiusura scanner e monitor
     system(stopmon);
@@ -140,10 +181,6 @@ int main(int argc, char *argv[])
     printf("\n === Avvio interfaccia monitor ===\n");
     strcat(startmon, can);
 
-    #ifdef DEBUG
-    printf("---stringa con canale: %s\n", startmon);
-    #endif
-
     //avvio monitor
     system(startmon);
 
@@ -153,18 +190,10 @@ int main(int argc, char *argv[])
     //file output
     printf("\nFile di output (NO spazi!, -1 to clean-exit):\t");
     scanf("%s", fout);
-    checkExit(c, fout, stopmon, pidpath, fpid);
-
-    #ifdef DEBUG
-    printf("---nome file: %s\n", fout);
-    #endif
+    checkExit(c, fout, stopmon, pidpath);
 
     //costruisco stringa
     sprintf(scanmon, "%s %s -c %s -w %s %s --ignore-negative-one &", scanmon, bssid, can, fout, inmon);
-
-    #ifdef DEBUG
-    printf("---stringa completa: %s\n", scanmon);
-    #endif
 
     //scanner handshake
     system(scanmon);
@@ -188,7 +217,7 @@ int main(int argc, char *argv[])
     } while (opz != 0);
 
     //chiusura monitor, controllo network-manager e free memoria
-    stopMonitor(stopmon, pidpath, fpid);
+    stopMonitor(stopmon, pidpath);
     netwCheck(c);
 	freeMem(maclist, listdim);
 
@@ -199,12 +228,12 @@ int main(int argc, char *argv[])
     getchar();
     getchar();
 
-    return SUCCESS;
+    return (EXIT_SUCCESS);
 }
 
 
-/* stampa intestazione */
-void printHeader()
+/* Prints program header */
+static void printHeader()
 {
     printf("\n ===========================================================\n");
     printf("    Aircrack-CLI  |  Command Line Interface - v. %s\n", VERS);
@@ -212,91 +241,98 @@ void printHeader()
 }
 
 
-/* stampa sintassi comando */
-void printSyntax(char *name)
+/* Prints program syntax */
+static void printSyntax(char *name)
 {
     char id;
 
-    //stampa condizionale all'OS
+    //conditional print according to OS
     id = checkDistro();
-    printf("Sintassi: ");	
-    if (id == 'u')
-      printf("sudo ");
-    else if (id == 'y')
-      printf("su -c ");
+    printf("\nSyntax: ");	
+    if (id == 'u')         //Debian-based
+		printf("sudo ");
+    else if (id == 'y')    //RedHat-based
+		printf("su -c ");
+	else    //others
+		printf("su -c ");
     printf("%s [N] [WLAN-IF]\n", name);
-    printf("Parametri opzionali:\n\t[N] salta installazioni\n\t[WLAN-IF] specifica l'interfaccia wireless (predefinita \"%s\")\n\n", STDWLAN);
+    printf("Optional parameters:\n\t[N] skips installation\n\t[WLAN-IF] specifies wireless interface (default \"%s\")\n\n", STDWLAN);
 }
 
 
-/* gestore installazione */
-void installer()
+/* Installer client */
+static void installer()
 {
     char c;
 
-    //dipendenze
-    printf("Installare le dipendenze necessarie al programma?  [S-N]\n");
-    while (c != 'S' && c != 'N') {
+    //dependencies
+    printf("\nInstall requested dependencies to run this program?  [Y-N]\n");
+    while (c != 'Y' && c != 'N') {
         scanf("%c", &c);
         c = toupper(c);
     }
-    if (c == 'S')
-        if (dep_install())
-            printf("Attenzione: senza tutte le dipendenze il programma potrebbe non funzionare correttamente!\n\n");
+    if (c == 'Y')
+        if (depInstall())
+            printf("Attention: without all dependencies this program may not work properly!\n\n");
     c = '0';
 
-
     //aircrack-ng
-    printf("\nScaricare e installare \"Aircrack-ng\"?  [S-N]\n");
-    while (c != 'S' && c != 'N') {
+    printf("\nDownload and install \"Aircrack-ng\"?  [Y-N]\n");
+    while (c != 'Y' && c != 'N') {
         scanf("%c", &c);
         c = toupper(c);
     }
-    if (c == 'S')
-        if (akng_install())
-            printf("Attenzione: Aircrack-ng NON installato!\n\n");
+    if (c == 'Y')
+        if (akngInstall())
+            printf("Attention: \"Aircrack-ng\" NOT installed!\n\n");
 }
 
 
-/* deautenticazione lista di client */
-char **deauthClient(char *bssid, char *inmon, char **maclist, int *dim)
+/* Deauthenticate list of clients */
+static char **deauthClient(char *bssid, char *inmon, char **maclist, int *dim)
 {
 	char death[]={"aireplay-ng --deauth 1 -a"}, cmd[BUFF];
 	int i;
 
-	//se lista ancora vuota la inizializzo
+	//if empty list, malloc and acquisition (standard dimension in MACLST)
 	if (maclist == NULL) {
 		maclist = (char**)malloc(MACLST * sizeof(char*));
 		if (maclist == NULL) {
-			printf("Errore allocazione lista MAC, dim. %d (1).\n", MACLST);
+			printf("Error allocating MAC list, dim. %d.\n", MACLST);
 			return NULL;
 		}
 		*dim = 0;
 		maclist = getList(maclist, dim);
-		//se dim=0 errore in prima allocazione o inserimento interrotto
+		//returns NULL if realloc fails
+		if (maclist == NULL)
+			return NULL;
+		//if dim=0: error in first allocation or acquisition aborted
 		if (*dim == 0) {
 			free(maclist);
 			maclist = NULL;
 		}
 	}
 	else {
-		printf("\nContenuto lista MAC attuale:\n");
+		printf("\nCurrent content MAC list:\n");
 		for (i=0; i<*dim; i++) {
 			printf("\t%s", maclist[i]);
 			if (i%2 == 0 && i != 0)
 				printf("\n");
 		}
 		printf("\n");	
-		printf("Scegli un'azione:\n\t1. Esegui deautenticazione\n\t2. Aggiungi indirizzi MAC\n");
+		printf("Choose an option:\n\t1. Run deauthentication\n\t2. Add MAC addresses\n");
 		scanf("%d", &i);
 		switch (i) {
 		    case 1:
-				break;				
+				break;
 		   case 2:
-			   maclist = getList(maclist, dim);    //acquisizione nuovi indirizzi
+			   maclist = getList(maclist, dim);
+			   //returns NULL if realloc fails
+			   if (maclist == NULL)
+				   return NULL;
 			   break;
 		   default:			
-			   printf("\nErrore: opzione non prevista! Uso lista attuale.\n");
+			   printf("\nError: wrong option! Using actual list.\n");
 		}	   
 	}
 	printf("\n");
@@ -310,7 +346,7 @@ char **deauthClient(char *bssid, char *inmon, char **maclist, int *dim)
 
 
 /* Interface to AirJammer */
-int jammer(char *bssid, char *inmon, char **maclist, int dim)
+static int jammer(char *bssid, char *inmon, char **maclist, int dim)
 {
 	char cmd[BUFF], path[BUFF], list[]={"/tmp/maclist.txt"};
 	FILE *fp;
@@ -318,11 +354,11 @@ int jammer(char *bssid, char *inmon, char **maclist, int dim)
 
 	if (maclist == NULL) {
 		fprintf(stdout, "\nError: MAC list is still empty!\n");
-		return FAIL;
+		return (EXIT_FAILURE);
 	}
 	if ((fp = fopen(list, "w")) == NULL) {
 		fprintf(stderr, "\nError writing MAC list file \"%s\".\n", list);
-		return FAIL;
+		return (EXIT_FAILURE);
 	}
 	for (i=0; i<dim; i++)
 		fprintf(fp, "%s\n", maclist[i]);
@@ -330,49 +366,46 @@ int jammer(char *bssid, char *inmon, char **maclist, int dim)
 	
 	if (getcwd(path, BUFF) == NULL) {
         fprintf(stderr, "\nError reading current path.\n");
-        return FAIL;
+        return (EXIT_FAILURE);
     }
 	sprintf(cmd, "xterm -T AirJammer -e %s/bin/airjammer.bin %s %s %s &", path, bssid, inmon, list);
-
-	printf("Running: %s\n", cmd);
 	system(cmd);
 
-	return SUCCESS;
+	return (EXIT_SUCCESS);
 }
 
 
-/* gestione stop interfaccie monitor */
-void stopMonitor(char *stopmon, char *pidpath, FILE *fpid)
+/* Stops monitor interface and removes PID file */
+static void stopMonitor(char *stopmon, char *pidpath)
 {
     char clean[25]={"rm -f "};
 
     system(stopmon);
-    //rimuovo file PID
-    fclose(fpid);
+    //remove PID file
     strcat(clean, pidpath);
     system(clean);
 }
 
 
-/* restart network-manager if stopped */
-void netwCheck(char c)
+/* Restart network-manager if stopped */
+static void netwCheck(char c)
 {
-    if (c == 'S') {
-      printf("\nRiattivo \"network-manager\"\n");
+    if (c == 'Y') {
+      printf("\nRestarting \"network-manager\"\n");
       system(NETWSTART);
       printf("\n");
     }
 }
 
 
-/* check wheter to clean-exit when given "-1" string */
-int checkExit(char c, char *string, char *stopmon, char *pidpath, FILE *fpid)
+/* Check wheter to clean-exit when given "-1" string */
+static int checkExit(char c, char *string, char *stopmon, char *pidpath)
 {
     if (!strcmp(string, "-1")) {
         netwCheck(c);
-        printf("Uscita...\n");
-        stopMonitor(stopmon, pidpath, fpid);
-        exit(FAIL);
+        printf("Exiting...\n");
+        stopMonitor(stopmon, pidpath);
+        exit(EXIT_FAILURE);
     }
-    return SUCCESS;
+    return (EXIT_SUCCESS);
 }

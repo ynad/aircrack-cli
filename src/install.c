@@ -1,9 +1,22 @@
-/**
-        Aircrack - Command Line Interface
+/**CFile***********************************************************************
 
-        Gestore installazioni
-        install.c
-**/
+  FileName    [install.c]
+
+  PackageName [Aircrack-CLI]
+
+  Synopsis    [Aircrack Command Line Interface - Installer handler]
+
+  Description [Command Line Interface for Aircrack-ng 
+  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+
+  Author      [ynad, stethewwolf]
+
+  License     [GPLv2, see LICENSE.md]
+  
+  Revision    [beta-03, 2013-11-22]
+
+******************************************************************************/
+
 
 #ifndef __linux__
 #error Compatible with Linux only!
@@ -17,15 +30,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <errno.h>
 
-//header installatore
+//installer handler header
 #include "install.h"
 
 #define BUFF 255
-#define FAIL 1
-#define SUCCESS 0
 #define FALSE 0
 #define TRUE 1
+
 #define TMPDIR "/tmp/ngtmp/"
 #define AIRNAME "aircrack-ng-1.2-beta1.tar.gz"
 #define DISTRO "/proc/version"
@@ -35,75 +48,82 @@
 
 /*
     NOTE:
-        - supportati OS debian-based e RedHad-based (YUM/rpm) [Fedora, (Open)SUSE]
+        - supported only OS debian-based e RedHad-based (YUM/rpm) [Fedora, (Open)SUSE]
 
 */
 
+//error variable
+//extern int errno;
 
-/* installatore dipendenze */
-int dep_install()
+
+/* Dependencies installer */
+int depInstall()
 {
     char c='0', id='0';
 
-    //controllo OS, se non supportato esco
+    //OS check: quit if not supported
     if ((id = checkDistro()) == '0')
-      return FAIL;
-
-    printf("\nE' necessario installare le seguenti dipendenze:\n"
+		return (EXIT_FAILURE);
+	
+    fprintf(stdout, "\nThe following dependencies are requested:\n"
             "\t* build-essential\n"
             "\t* libssl-dev/openssl-devel\n"
             "\t* wget\n"
             "\t* macchanger\n"
-            "Continuare?  [S-N]\n"
+            "Continue?  [Y-N]\n"
             );
 
-    while (c != 'S' && c != 'N') {
-        scanf("%c", &c);
+    while (c != 'Y' && c != 'N') {
+        fscanf(stdin, "%c", &c);
         c = toupper(c);
     }
-    if (c == 'S') {
-        printf("\nInstallazione dipendenze...\n");
+    if (c == 'Y') {
+        fprintf(stdout, "\nInstalling dependencies...\n\n");
 	//Ubuntu
 	if (id == 'u')
-	  system("apt-get install build-essential libssl-dev wget macchanger --install-suggests -y --force-yes");
+		system("apt-get install build-essential libssl-dev wget macchanger --install-suggests -y --force-yes");
 	//yum-based
 	else if (id == 'y')
-	  system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel wget macchanger -y");
+		system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel wget macchanger -y");
 	else {
-	  printf("ERRORE\n");
-	  return FAIL;
+		fprintf(stderr, "ERROR\n");
+		return (EXIT_FAILURE);
 	}
     }
     else {
-        printf("Esecuzione interrotta!\n");
-        return FAIL;
+        fprintf(stdout, "Execution aborted.\n");
+        return (EXIT_FAILURE);
     }
-    return SUCCESS;
+    fprintf(stdout, "\n");
+    return (EXIT_SUCCESS);
 }
 
 
-/* controllo versione distribuzione OS  */
+/* OS version checker */
 char checkDistro()
 {
     FILE *fp;
     char name[BUFF], id;
 
-    //controllo versione distribuzione
+	//clear error value
+	errno = 0;
+
+    //reading info file
     if ((fp = fopen(DISTRO, "r")) == NULL)
-      printf("Errore apertura file %s, potrebbero verificarsi errori.\n", DISTRO);
+		fprintf(stderr, "Error opening file \"%s\", there may be misbehavior: %s.\n", DISTRO, strerror(errno));
 
     if (fgets(name, BUFF, fp) == NULL)
-      printf("File %s non corretto!\n", DISTRO);
+		fprintf(stderr, "File \"%s\" corrupted!\n", DISTRO);
 
     if (strstr(name, UBUNTU) != NULL) {
-      id = 'u';
+		id = 'u';
     }
     else if (strstr(name, FEDORA) != NULL || strstr(name, SUSE) != NULL) {
-      id = 'y';
+		id = 'y';
     } 
     else {
-      id = '0';
-      printf("\nDistribuzione non supportata:\n%s\n", name);
+		id = '0';
+		fprintf(stderr, "\nDistribution not supported:\n%s\n", name);
     }
     fclose(fp);
 
@@ -111,8 +131,8 @@ char checkDistro()
 }
 
 
-/* installatore aircrack */
-int akng_install()
+/* Aircrack-ng downloader and installer */
+int akngInstall()
 {
     int go=TRUE;
     char c='0', cgdir[BUFF], command[BUFF]={"wget http://download.aircrack-ng.org/"};
@@ -120,80 +140,77 @@ int akng_install()
     struct dirent *dirp;
     struct stat statbuf;
 
-    printf("\n\tScaricamento ed estrazione sorgenti...\n\n");
+	//clear error value
+	errno = 0;
 
     if (getcwd(cgdir, BUFF) == NULL) {
-        printf("Errore lettura cartella corrente.\n");
-        exit(FAIL);
+        fprintf(stderr, "Error reading current directory: %s.\n", strerror(errno));
+        return (EXIT_FAILURE);
     }
-    if (mkdir(TMPDIR, S_IRWXU) == -1) {     //creazione cartella temporanea
-        printf("Errore crezione cartella \"%s\"\n", TMPDIR);
-        exit(FAIL);
-	}
-	if (chdir(TMPDIR) == -1) {              //spostamento in cartella temporanea
-        printf("Errore spostamento in directory \"%s\".\n", TMPDIR);
-        exit(FAIL);
+    if (mkdir(TMPDIR, S_IRWXU) == -1) {
+        fprintf(stderr, "Error creating temporary directory \"%s\": %s\n", TMPDIR, strerror(errno));
+        return (EXIT_FAILURE);
     }
+    if (chdir(TMPDIR) == -1) {
+        fprintf(stderr, "Error moving to directory \"%s\": %s.\n", TMPDIR, strerror(errno));
+        return (EXIT_FAILURE);
+    }
+    
+    fprintf(stdout, "\n\tDownloading and extracting source code...\n\n");
 
-    //scaricamento ed estrazione sorgenti
     sprintf(command, "%s%s && tar -zxvf %s", command, AIRNAME, AIRNAME);
-    printf("%s\n", command);
     system(command);
 
-    printf("\nConfermi l'installazione?  [S-N]\n");
-    while( c!='S' && c!='N') {
-        scanf("%c", &c);
+    fprintf(stdout, "\nConfirm installation?  [Y-N]\n");
+    while( c!='Y' && c!='N') {
+        fscanf(stdin, "%c", &c);
         c=toupper(c);
     }
 
-    if( c=='S' ) {
-        printf("\tEseguo compilazione e installo... (in caso di errori verificare le dipendenze)\n\n");
+    if( c=='Y' ) {
+        fprintf(stdout, "\tCompiling and installing... (in case of errors check dependencies)\n\n");
 
         if ( (dp = opendir(TMPDIR)) == NULL ) {
-            printf("Errore apertura directory %s.\n", TMPDIR);
-            exit(FAIL);
+            fprintf(stderr, "Error opening directory \"%s\": %s.\n", TMPDIR, strerror(errno));
+            return (EXIT_FAILURE);
         }
-        while ((dirp = readdir(dp)) != NULL && go == TRUE) {    //ricerca cartella estratta e entrata in essa
+        while ((dirp = readdir(dp)) != NULL && go == TRUE) {    //search extracted dir and move to it
             sprintf(command, "%s%s", TMPDIR, dirp->d_name);
             if (lstat(command, &statbuf) < 0) {
-                printf("Errore lettura stat (%s).\n", command);
-                exit(FAIL);
+                fprintf(stderr, "Error reading stat (%s): %s.\n", command, strerror(errno));
+                return (EXIT_FAILURE);
             }
             if (S_ISDIR(statbuf.st_mode) != 0 && strcmp(dirp->d_name, ".") && strcmp(dirp->d_name, "..")) {
                 if (chdir(command) == -1) {
-                    printf("Errore spostamento in directory \"%s\".\n", command);
-                    exit(FAIL);
+                    fprintf(stderr, "Error moving to directory \"%s\": %s.\n", command, strerror(errno));
+                    return (EXIT_FAILURE);
                 }
                 go = FALSE;
             }
         }
 
-        //compilo e installo
+        //complide and install
         system("make && make install");
 
         if (closedir(dp) < 0) {
-            printf("Errore chiusura directory %s\n", TMPDIR);
-            exit(FAIL);
+            fprintf(stderr, "Error closing directory \"%s\": %s\n", TMPDIR, strerror(errno));
+            //return (EXIT_FAILURE);
         }
         go = FALSE;
     }
 
-    if (chdir(cgdir) == -1) {       //ritorno al path originale
-        printf("Errore spostamento in directory \"%s\".\n", cgdir);
-        exit(FAIL);
+    if (chdir(cgdir) == -1) {       //go back to original path
+        fprintf(stderr, "Error moving to directory \"%s\": %s.\n", cgdir, strerror(errno));
+        return (EXIT_FAILURE);
     }
-    printf("\n\tRimuovo cartelle temporanee...\n");
+    fprintf(stdout, "\n\tRemoving temporary directory...\n");
     sprintf(command, "rm -fr %s", TMPDIR);
     system(command);
 
     if (go == TRUE) {
-        printf("\n INSTALLAZIONE ANNULLATA!\n");
-        go = FAIL;
+        fprintf(stdout, "\n INSTALLATION ABORTED!\n\n");
+        return (EXIT_FAILURE);
     }
-    else {
-        printf("\n INSTALLAZIONE COMPLETATA!\n");
-        go = SUCCESS;
-    }
-
-    return go;
+    fprintf(stdout, "\n INSTALLATION COMPLETED!\n\n");
+    return (EXIT_SUCCESS);
 }
