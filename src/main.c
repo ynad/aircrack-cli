@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-03, 2013-11-24]
+  Revision    [beta-03, 2013-11-25]
 
 ******************************************************************************/
 
@@ -42,15 +42,13 @@
 #define NETWSTART "service network-manager start"
 #define CLEAR "clear"
 
-//uncomment to enable debugging functions
-//#define DEBUG
 
 //prototypes
 static void printHeader();
 static void printSyntax(char*);
 static void installer();
 static char **deauthClient(char *, char *, char **, int *);
-static int jammer(char *, char *, char **, int);
+static int jammer(char *, char *, char **, int, char *);
 static void stopMonitor(char*, char*);
 static void netwCheck(char);
 static int checkExit(char c, char *, char *, char *);
@@ -92,32 +90,6 @@ int main(int argc, char *argv[])
 		printSyntax(argv[0]);
     }
 
-	/*
-	if (getcwd(montmp, BUFF) == NULL) {
-        fprintf(stderr, "\nError reading current path.\n");
-        return (EXIT_FAILURE);
-    }
-	printf("argv[0]=%s\npath=%s\n", argv[0], montmp);
-	for (opz=strlen(argv[0]); opz>0; opz--) {
-		if (argv[0][opz] == '/' && argv[0][opz-1] != '.') {
-			opz--;
-			while (argv[0][opz] != '/') {
-				bssid[listdim++] = argv[0][opz--];
-			}
-			bssid[listdim] = '\0';
-		}
-	}
-	printf("reverse: %s\n", bssid);
-	listdim = strlen(montmp);
-	montmp[listdim++] = '/';
-	for (opz=strlen(bssid)-1; opz>=0; opz--) {
-		montmp[listdim++] = bssid[opz];
-	}
-	printf("final: %s\n", montmp);
-	strcat(montmp, "/airjammer.bin");
-	system(montmp);
-	*/
-
     //controllo diritti esecuzione
     if (getgid() != 0) {
         printf("Eseguire il programma con diritti di amministratore!\n\n");
@@ -131,10 +103,11 @@ int main(int argc, char *argv[])
     c = '0';
     // arresto processi potenzialmente nocivi
     printf("\nVuoi terminare \"network-manager\"?  [Y-N]\n");
-    while (c != 'Y' && c != 'N') {
-        scanf("%c", &c);
-        c = toupper(c);
-    }
+	do {
+		scanf("%c%*c", &c);
+		c = toupper(c);
+	} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
+
     if (c == 'Y')
         system(NETWSTOP);
 
@@ -171,10 +144,6 @@ int main(int argc, char *argv[])
     system(stopmon);
     sleep(1);
 
-    #ifndef DEBUG
-    system(CLEAR);
-    #endif
-
 
     /** FASE 2 **/
 
@@ -207,7 +176,7 @@ int main(int argc, char *argv[])
 				maclist = deauthClient(bssid, inmon, maclist, &listdim);
                 break;
 		    case 2:
-				jammer(bssid, inmon, maclist, listdim);
+				jammer(bssid, inmon, maclist, listdim, argv[0]);
 				break;
             case 0:
                 break;
@@ -263,14 +232,14 @@ static void printSyntax(char *name)
 /* Installer client */
 static void installer()
 {
-    char c;
+    char c=0;
 
     //dependencies
     printf("\nInstall requested dependencies to run this program?  [Y-N]\n");
-    while (c != 'Y' && c != 'N') {
-        scanf("%c", &c);
-        c = toupper(c);
-    }
+	do {
+		scanf("%c%*c", &c);
+		c = toupper(c);
+	} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
     if (c == 'Y')
         if (depInstall())
             printf("Attention: without all dependencies this program may not work properly!\n\n");
@@ -278,10 +247,10 @@ static void installer()
 
     //aircrack-ng
     printf("\nDownload and install \"Aircrack-ng\"?  [Y-N]\n");
-    while (c != 'Y' && c != 'N') {
-        scanf("%c", &c);
-        c = toupper(c);
-    }
+	do {
+		scanf("%c%*c", &c);
+		c = toupper(c);
+	} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
     if (c == 'Y')
         if (akngInstall())
             printf("Attention: \"Aircrack-ng\" NOT installed!\n\n");
@@ -346,11 +315,11 @@ static char **deauthClient(char *bssid, char *inmon, char **maclist, int *dim)
 
 
 /* Interface to AirJammer */
-static int jammer(char *bssid, char *inmon, char **maclist, int dim)
+static int jammer(char *bssid, char *inmon, char **maclist, int dim, char *argvz)
 {
 	char cmd[BUFF], path[BUFF], list[]={"/tmp/maclist.txt"};
 	FILE *fp;
-	int i;
+	int i, stop=0;
 
 	if (maclist == NULL) {
 		fprintf(stdout, "\nError: MAC list is still empty!\n");
@@ -368,7 +337,16 @@ static int jammer(char *bssid, char *inmon, char **maclist, int dim)
         fprintf(stderr, "\nError reading current path.\n");
         return (EXIT_FAILURE);
     }
-	sprintf(cmd, "xterm -T AirJammer -e %s/bin/airjammer.bin %s %s %s &", path, bssid, inmon, list);
+
+	//calculate path of AirJammer executable
+	for (i=strlen(argvz)-1; i>0 && !stop; i--) {
+		if (argvz[i] == '/') {
+			argvz[i] = '\0';
+			stop = 1;
+		}
+	}
+
+	sprintf(cmd, "xterm -T AirJammer -e %s/%s/airjammer.bin %s %s %s &", path, argvz, bssid, inmon, list);
 	system(cmd);
 
 	return (EXIT_SUCCESS);

@@ -1,15 +1,14 @@
 Aircrack-CLI - Command Line Interface
 =====================================
 
-Version beta-03 (2013-11-24)
+Version beta-03 (2013-11-25)
 
     TODO:
-    - options from arguments: output file(s), terminal, etc.
-    - jammer
+    - jammer: fork
     - full translations
-    - different handling of [Y-N]
-    - deauth 0 ?
     - REBUILD MAIN
+	===
+    - options from arguments: output file(s), terminal, etc.
     - save maclist.txt
 
 

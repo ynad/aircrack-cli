@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-03, 2013-11-22]
+  Revision    [beta-03, 2013-11-25]
 
 ******************************************************************************/
 
@@ -73,10 +73,10 @@ int depInstall()
             "Continue?  [Y-N]\n"
             );
 
-    while (c != 'Y' && c != 'N') {
-        fscanf(stdin, "%c", &c);
-        c = toupper(c);
-    }
+	do {
+		scanf("%c%*c", &c);
+		c = toupper(c);
+	} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
     if (c == 'Y') {
         fprintf(stdout, "\nInstalling dependencies...\n\n");
 	//Ubuntu
@@ -162,10 +162,10 @@ int akngInstall()
     system(command);
 
     fprintf(stdout, "\nConfirm installation?  [Y-N]\n");
-    while( c!='Y' && c!='N') {
-        fscanf(stdin, "%c", &c);
-        c=toupper(c);
-    }
+	do {
+		scanf("%c%*c", &c);
+		c = toupper(c);
+	} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
 
     if( c=='Y' ) {
         fprintf(stdout, "\tCompiling and installing... (in case of errors check dependencies)\n\n");
