@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [beta-03, 2013-11-21]
+  Revision    [beta-04, 2013-12-14]
 
 ******************************************************************************/
 
@@ -22,11 +22,18 @@
 #define LIB_H_INCLUDED
 
 
+//Version code - keep UPDATED!
+#define VERS "beta-04"
+
 #define BUFF 255
 #define MACLST 100
 #define MACLEN 17
 #define FALSE 0
 #define TRUE 1
+
+//Type declaration
+typedef struct maclist maclist_t;
+
 
 /* PID files handling */
 FILE *pidOpen(char *, char *);
@@ -35,16 +42,34 @@ FILE *pidOpen(char *, char *);
 void macchanger(char*);
 
 /* Memory release */
-void freeMem(char **, int);
+void freeMem(maclist_t *);
+
+/* Deauthenticate list of clients */
+maclist_t *deauthClient(char *, char *, maclist_t *);
 
 /* Acquisition of MAC list */
-char **getList(char **, int *);
+maclist_t *getList(maclist_t *);
 
-/* Check MAC address format */
-int checkMac(char *);
+/* Print maclist to specified file */
+int fprintMaclist(maclist_t *, char *);
+
+/* Read MAC addresses from supplied file */
+maclist_t *freadMaclist(char *);
+
+/* Return single MAC address */
+char *getMac(maclist_t *, int);
+
+/* Return MAC list dimension */
+int getDim(maclist_t *);
 
 /* Determines number of existing/configured CPUs */
 int procNumb();
+
+/* Check current version with info on online repo */
+int checkVersion();
+
+/* Check MAC address format */
+int checkMac(char *);
 
 
 #endif // LIB_H_INCLUDED

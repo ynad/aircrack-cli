@@ -1,15 +1,30 @@
+## Aircrack-CLI Makefile
+
 target:
-	# object for main executable
+	# Main module - Object
 	gcc -Wall -I src/ -c src/main.c src/lib.c src/install.c
-	# object for secondary module
-	gcc -Wall -I src/ -c src/airjammer.c src/lib.c
+	# Secondary module - Object
+	gcc -Wall -I src/ -c src/airjammer.c src/lib.c -lpthread
+	mv *.o obj
+
+debug:
+	# Main module - DEBUG mode
+	gcc -Wall -I src/ -c src/main.c src/lib.c src/install.c -DDEBUG -g
+	# Secondary module - DEBUG mode
+	gcc -Wall -I src/ -c src/airjammer.c src/lib.c -lpthread -DDEBUG -g
 	mv *.o obj
 
 install: target
-	# main executable
+	# Main module - Executable
 	gcc obj/main.o obj/lib.o obj/install.o -o bin/aircrack-cli.bin
-	# secondary module executable
-	gcc obj/airjammer.o obj/lib.o -o bin/airjammer.bin
+	# Secondary module - Executable
+	gcc obj/airjammer.o obj/lib.o -o bin/airjammer.bin -lpthread
+
+dbginstall: debug
+	# Main module - Executable
+	gcc obj/main.o obj/lib.o obj/install.o -o bin/aircrack-cli.bin
+	# Secondary module - Executable
+	gcc obj/airjammer.o obj/lib.o -o bin/airjammer.bin -lpthread
 
 clean:
 	rm obj/*

@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-03, 2013-11-22]
+  Revision    [beta-04, 2013-12-14]
 
 ******************************************************************************/
 
@@ -29,11 +29,21 @@
 #include <unistd.h>
 #include <errno.h>
 
-//library functions header
-#include <lib.h>
+//Library functions header
+#include "lib.h"
+
+//URL to repo and file containing version info
+#define REPO "github.com/ynad/aircrack-cli/"
+#define URLVERS "https://raw.github.com/ynad/aircrack-cli/master/VERSION"
 
 //error variable
 //extern int errno;
+
+//Definition of MAC address struct
+struct maclist {
+	char **macs;
+	int dim;
+};
 
 
 /* PID files handling */
@@ -75,71 +85,212 @@ void macchanger(char *inmon)
 
 
 /* Memory release */
-void freeMem(char **maclist, int dim)
+void freeMem(maclist_t *maclst)
 {
 	int i;
-	for (i=0; i<dim; i++)
-		free(maclist[i]);
-    free(maclist);
+	for (i=0; i<maclst->dim; i++)
+		free(maclst->macs[i]);
+	free(maclst->macs);
+	free(maclst);
+}
+
+
+/* Deauthenticate list of clients */
+maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
+{
+	char death[]={"aireplay-ng --deauth 1 -a"}, cmd[BUFF];
+	int i;
+
+	//if empty list, malloc and acquisition (standard dimension in MACLST)
+	if (maclst == NULL) {
+		maclst = (maclist_t *)malloc(sizeof(maclist_t));
+		if (maclst == NULL) {
+			printf("Error allocating MAC struct.\n");
+			return NULL;
+		}
+		maclst->macs = (char **)malloc(MACLST * sizeof(char *));
+		if (maclst->macs == NULL) {
+			printf("Error allocating MAC list, dim %d.\n", MACLST);
+			free(maclst);
+			return NULL;
+		}
+		maclst->dim = 0;
+		maclst = getList(maclst);
+		//returns NULL if realloc fails
+		if (maclst == NULL) {
+			free(maclst);
+			return NULL;
+		}
+		//if dim=0: error in first allocation or acquisition aborted
+		if (maclst->dim == 0) {
+			free(maclst);
+			maclst = NULL;
+			return NULL;
+		}
+	}
+	else {
+		printf("\nCurrent content MAC list:\n");
+		for (i=0; i<maclst->dim; i++) {
+			printf("\t%s", maclst->macs[i]);
+			if (i%2 == 0 && i != 0)
+				printf("\n");
+		}
+		printf("\n");	
+		printf("Choose an option:\n\t1. Run deauthentication\n\t2. Add MAC addresses\n");
+		scanf("%d", &i);
+		switch (i) {
+		    case 1:
+				break;
+		   case 2:
+			   maclst = getList(maclst);
+			   //returns NULL if realloc fails
+			   if (maclst == NULL) {
+		   			free(maclst);
+				   return NULL;
+			   }
+			   break;
+		   default:			
+			   printf("\nError: wrong option! Using actual list.\n");
+		}	   
+	}
+	printf("\n");
+	for (i=0; i<maclst->dim; i++) {
+		sprintf(cmd, "%s %s -c %s %s --ignore-negative-one", death, bssid, maclst->macs[i], inmon);
+		printf("\tDeAuth n.%d:\n", i+1);
+		system(cmd);
+	}
+	return maclst;
 }
 
 
 /* Acquisition of MAC list */
-char **getList(char **maclist, int *dim)
+maclist_t *getList(maclist_t *maclst)
 {
 	char mac[BUFF];
 
 	//clear error value
 	errno = 0;
 
+	//sanity check
+	if (maclst == NULL || maclst->macs == NULL) {
+		fprintf(stderr, "\nError: MAC list not initialized yet!\n");
+		return NULL;
+	}
+
 	fprintf(stdout, "\nInput one MAC address per line (-1 to stop):\n");
-	while (fprintf(stdout, " %d:\t", (*dim)+1) && fscanf(stdin, "%s", mac) == 1 && strcmp(mac, "-1")) {
+	while (fprintf(stdout, " %d:\t", maclst->dim+1) && fscanf(stdin, "%s", mac) == 1 && strcmp(mac, "-1")) {
 		if (checkMac(mac) == FALSE) {
 			fprintf(stderr, "Incorrect address or wrong format.\n");
 		}
 		else {
-			maclist[*dim] = strdup(mac);
-			if (maclist[*dim] == NULL) {
-				fprintf(stderr, "Error allocating MAC address (pos. %d): %s.\n\n", *dim, strerror(errno));
-				return maclist;
+			maclst->macs[maclst->dim] = strdup(mac);
+			if (maclst->macs[maclst->dim] == NULL) {
+				fprintf(stderr, "\nError allocating MAC address (pos. %d): %s.\n\n", maclst->dim, strerror(errno));
+				return maclst;
 			}
 			//number of collected addresses
-			(*dim)++;
+			maclst->dim++;
 			//check if list (array as this case) is full, if so realloc
-			if (*dim == MACLST) {
-				maclist = (char**)realloc(maclist, MACLST*2 * sizeof(char*));
-				if (maclist == NULL) {
+			if (maclst->dim == MACLST) {
+				maclst->macs = (char **)realloc(maclst->macs, MACLST*2 * sizeof(char *));
+				if (maclst->macs == NULL) {
 					fprintf(stderr, "\nError reallocating MAC list (dim. %d): %s.\n\n", MACLST*2, strerror(errno));
-					*dim = 0;
+					maclst->dim = 0;
 					return NULL;
 				}
 			}
 		}
 	}
-	return maclist;
+	return maclst;
 }
 
 
-/* Check MAC address format */
-int checkMac(char *mac)
+/* Print maclist to specified file */
+int fprintMaclist(maclist_t *maclst, char *file)
 {
-	int i, len, punt=2;
+	FILE *fp;
+	int i;
 
-	//address of wrong lenght
-	if ((len = strlen(mac)) != MACLEN)
-		return FALSE;
+	//clear error value
+	errno = 0;	
 
-	//scan char by char to check for hexadecimal values and ':' separators
-	for (i=0; i<len; i++) {
-		if (i == punt) {
-			if (mac[i] != ':')
-				return FALSE;
-			punt += 3;
-		}
-		else if (isxdigit((int)mac[i]) == FALSE)
-			return FALSE;
+	if ((fp = fopen(file, "w")) == NULL) {
+		fprintf(stderr, "\nError writing MAC list file \"%s\": %s.\n", file, strerror(errno));
+		return (EXIT_FAILURE);
 	}
-	return TRUE;
+	for (i=0; i<maclst->dim; i++)
+		fprintf(fp, "%s\n", maclst->macs[i]);
+	fclose(fp);
+
+	return (EXIT_SUCCESS);
+}
+
+
+/* Read MAC addresses from supplied file */
+maclist_t *freadMaclist(char *source)
+{
+	FILE *fp;
+	char cmd[BUFF];
+	int i, dim;
+	maclist_t *maclst;
+
+	//clear error value
+	errno = 0;
+
+	//opening file containing MAC list
+	if ((fp = fopen(source, "r")) == NULL) {
+		fprintf(stderr, "Error opening file \"%s\": %s.\n", source, strerror(errno));
+		return NULL;
+	}
+	//checking list lenght
+	dim = 0;
+	while (fgets(cmd, BUFF, fp) != NULL)
+		dim++;
+	rewind(fp);
+
+	maclst = (maclist_t *)malloc(sizeof(maclist_t));
+	if (maclst == NULL) {
+		printf("Error allocating MAC struct.\n");
+		return NULL;
+	}
+	maclst->dim = 0;
+	if ((maclst->macs = (char **)malloc(dim * sizeof(char *))) == NULL) {
+		fprintf(stderr, "Error allocating MAC list (dim. %d): %s.\n", dim, strerror(errno));
+		free(maclst);
+		return NULL;
+	}
+	//reading file
+	for (i=0; i<dim; i++) {
+		fscanf(fp, "%s", cmd);
+		//check correct format before adding to list
+		if (checkMac(cmd) == FALSE) {
+			fprintf(stderr, "Incorrect address or wrong format: \"%s\"\n", cmd);
+		}
+		else {
+			maclst->macs[maclst->dim] = strdup(cmd);
+			if (maclst->macs[maclst->dim] == NULL) {
+				fprintf(stderr, "Error allocating MAC address (pos. %d): %s.\n", maclst->dim, strerror(errno));
+				freeMem(maclst);
+				return NULL;
+			}
+			maclst->dim++;
+		}
+	}
+	return maclst;
+}
+
+
+/* Return single MAC address */
+char *getMac(maclist_t *maclst, int i)
+{
+	return (maclst->macs[i]);
+}
+
+
+/* Return MAC list dimension */
+int getDim(maclist_t *maclst)
+{
+	return (maclst->dim);
 }
 
 
@@ -168,5 +319,59 @@ int procNumb()
 	//fprintf(stderr, "Could not determine number of CPUs");
 	return nprocs;
 #endif
+}
+
+
+/* Check current version with info on online repo */
+int checkVersion()
+{
+	char cmd[BUFF], vers[BUFF];
+	FILE *fp;
+
+	//clear error value
+	errno = 0;
+
+	//download file
+	sprintf(cmd, "wget %s -O /tmp/VERSION -q", URLVERS);
+	system(cmd);
+
+	if ((fp = fopen("/tmp/VERSION", "r")) == NULL) {
+		fprintf(stderr, "Error reading from file \"%s\": %s\n", "/tmp/VERSION", strerror(errno));
+		return (EXIT_FAILURE);
+	}
+	fscanf(fp, "%s", vers);
+	fclose(fp);
+
+	if (strcmp(vers, VERS) <= 0) {
+		fprintf(stdout, "Up-to-date or newer version is in use (local: %s, repo: %s).\n\n", VERS, vers);
+	}
+	else {
+		fprintf(stdout, "\nVersion in use: %s, available: %s\nCheck \"%s\" for updates!\n\n", VERS, vers, REPO);
+	}
+	system("rm -f /tmp/VERSION");
+	return (EXIT_SUCCESS);
+}
+
+
+/* Check MAC address format */
+int checkMac(char *mac)
+{
+	int i, len, punt=2;
+
+	//address of wrong lenght
+	if ((len = strlen(mac)) != MACLEN)
+		return FALSE;
+
+	//scan char by char to check for hexadecimal values and ':' separators
+	for (i=0; i<len; i++) {
+		if (i == punt) {
+			if (mac[i] != ':')
+				return FALSE;
+			punt += 3;
+		}
+		else if (isxdigit((int)mac[i]) == FALSE)
+			return FALSE;
+	}
+	return TRUE;
 }
 

