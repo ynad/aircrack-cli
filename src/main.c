@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-14]
+  Revision    [beta-04, 2013-12-16]
 
 ******************************************************************************/
 
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	do {
 		scanf("%s", can);
 		sscanf(can, "%d", &opz);
-	} while ((opz < 1 || opz > 14) && printf("Allowed only channels in range [1-14]:\t"));
+	} while ((opz < 1 || opz > 14) && opz != -1 && printf("Allowed only channels in range [1-14]:\t"));
 
     checkExit(c, can, stopmon, pidpath, netwstart);
 
