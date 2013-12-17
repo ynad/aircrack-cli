@@ -1,12 +1,15 @@
 Aircrack-CLI - Command Line Interface
 =====================================
 
-Version beta-04 (2013-12-14)
+Version beta-04 (2013-12-17)
 
     TODO:
     - full translations
     - REBUILD MAIN
+    + cancellazione da maclist
+    - cli avvio aircrack/oclhashcat (bash)
     ===
+    - multiple stop/start network-manager
     - options from arguments: terminal, output file(s), etc.
 
 

@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-16]
+  Revision    [beta-04, 2013-12-17]
 
 ******************************************************************************/
 
@@ -137,13 +137,13 @@ int main(int argc, char *argv[])
 		scanf("%s", can);
 		sscanf(can, "%d", &opz);
 	} while ((opz < 1 || opz > 14) && opz != -1 && printf("Allowed only channels in range [1-14]:\t"));
-
     checkExit(c, can, stopmon, pidpath, netwstart);
 
-    printf("\nIdentificativo BSSID:\t");
+    printf("\nIdentificativo BSSID (-1 per clean-exit):\t");
 	do {
 		scanf("%s", bssid);
-	} while (checkMac(bssid) == FALSE && printf("Incorrect address or wrong format:\t"));
+	} while (strcmp(bssid, "-1") && checkMac(bssid) == FALSE && printf("Incorrect address or wrong format:\t"));
+    checkExit(c, bssid, stopmon, pidpath, netwstart);
 
     //chiusura scanner e monitor
     system(stopmon);
@@ -211,9 +211,9 @@ int main(int argc, char *argv[])
 /* Prints program header */
 static void printHeader()
 {
-    printf("\n ===========================================================\n");
-    printf("    Aircrack-CLI  |  Command Line Interface - v. %s\n", VERS);
-    printf(" ===========================================================\n\n");
+    printf("\n =======================================================================\n");
+    printf("    Aircrack-CLI  |  Command Line Interface - v. %s (%s)\n", VERS, BUILD);
+    printf(" =======================================================================\n\n");
 }
 
 

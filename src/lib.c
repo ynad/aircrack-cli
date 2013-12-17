@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-14]
+  Revision    [beta-04, 2013-12-17]
 
 ******************************************************************************/
 
@@ -105,12 +105,12 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 	if (maclst == NULL) {
 		maclst = (maclist_t *)malloc(sizeof(maclist_t));
 		if (maclst == NULL) {
-			printf("Error allocating MAC struct.\n");
+			fprintf(stderr, "Error allocating MAC struct.\n");
 			return NULL;
 		}
 		maclst->macs = (char **)malloc(MACLST * sizeof(char *));
 		if (maclst->macs == NULL) {
-			printf("Error allocating MAC list, dim %d.\n", MACLST);
+			fprintf(stderr, "Error allocating MAC list, dim %d.\n", MACLST);
 			free(maclst);
 			return NULL;
 		}
@@ -131,12 +131,12 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 	else {
 		printf("\nCurrent content MAC list:\n");
 		for (i=0; i<maclst->dim; i++) {
-			printf("\t%s", maclst->macs[i]);
+			fprintf(stdout, "\t(%d) %s", i+1, maclst->macs[i]);
 			if (i%2 == 0 && i != 0)
 				printf("\n");
 		}
-		printf("\n");	
-		printf("Choose an option:\n\t1. Run deauthentication\n\t2. Add MAC addresses\n");
+		fprintf(stdout, "\n");	
+		fprintf(stdout, "Choose an option:\n\t1. Run deauthentication\n\t2. Add MAC addresses\n\t3. Remove MAC addresses\n");
 		scanf("%d", &i);
 		switch (i) {
 		    case 1:
@@ -149,15 +149,24 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 				   return NULL;
 			   }
 			   break;
+		   case 3:
+			   fprintf(stdout, "\nInput index you want to remove:\t");
+			   scanf("%d", &i);
+			   i--;
+			   free(maclst->macs[i]);
+			   maclst->macs[i] = NULL;
+			   break;
 		   default:			
-			   printf("\nError: wrong option! Using actual list.\n");
+			   fprintf(stdout, "\nError: wrong option! Using actual list.\n");
 		}	   
 	}
 	printf("\n");
 	for (i=0; i<maclst->dim; i++) {
-		sprintf(cmd, "%s %s -c %s %s --ignore-negative-one", death, bssid, maclst->macs[i], inmon);
-		printf("\tDeAuth n.%d:\n", i+1);
-		system(cmd);
+		if (maclst->macs[i] != NULL) {
+			sprintf(cmd, "%s %s -c %s %s --ignore-negative-one", death, bssid, maclst->macs[i], inmon);
+			fprintf(stdout, "\tDeAuth n.%d:\n", i+1);
+			system(cmd);
+		}
 	}
 	return maclst;
 }
@@ -325,7 +334,7 @@ int procNumb()
 /* Check current version with info on online repo */
 int checkVersion()
 {
-	char cmd[BUFF], vers[BUFF];
+	char cmd[BUFF], vers[BUFF], build[BUFF];
 	FILE *fp;
 
 	//clear error value
@@ -339,14 +348,14 @@ int checkVersion()
 		fprintf(stderr, "Error reading from file \"%s\": %s\n", "/tmp/VERSION", strerror(errno));
 		return (EXIT_FAILURE);
 	}
-	fscanf(fp, "%s", vers);
+	fscanf(fp, "%s %s", vers, build);
 	fclose(fp);
 
-	if (strcmp(vers, VERS) <= 0) {
-		fprintf(stdout, "Up-to-date or newer version is in use (local: %s, repo: %s).\n\n", VERS, vers);
+	if (strcmp(vers, VERS) < 0) {
+		fprintf(stdout, "Up-to-date or newer version is in use (local: %s (%s), repo: %s (%s)).\n\n", VERS, BUILD, vers, build);
 	}
 	else {
-		fprintf(stdout, "\nVersion in use: %s, available: %s\nCheck \"%s\" for updates!\n\n", VERS, vers, REPO);
+		fprintf(stdout, "\nVersion in use: %s (%s), available: %s (%s)\nCheck \"%s\" for updates!\n\n", VERS, BUILD, vers, build, REPO);
 	}
 	system("rm -f /tmp/VERSION");
 	return (EXIT_SUCCESS);

