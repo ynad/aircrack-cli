@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-17]
+  Revision    [beta-04, 2013-12-20]
 
 ******************************************************************************/
 
@@ -136,12 +136,13 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 				printf("\n");
 		}
 		fprintf(stdout, "\n");	
-		fprintf(stdout, "Choose an option:\n\t1. Run deauthentication\n\t2. Add MAC addresses\n\t3. Remove MAC addresses\n");
+		fprintf(stdout, "Choose an option:\n\t1. Run deauthentication\n\t2. Add MAC addresses\n\t3. Remove MAC address\n");
 		scanf("%d", &i);
 		switch (i) {
 		    case 1:
 				break;
-		   case 2:
+			//Add MACs
+		    case 2:
 			   maclst = getList(maclst);
 			   //returns NULL if realloc fails
 			   if (maclst == NULL) {
@@ -149,12 +150,16 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 				   return NULL;
 			   }
 			   break;
+		   //Remove MAC (simplified)
 		   case 3:
 			   fprintf(stdout, "\nInput index you want to remove:\t");
 			   scanf("%d", &i);
-			   i--;
-			   free(maclst->macs[i]);
-			   maclst->macs[i] = NULL;
+			   if (--i >= 0 && i <= maclst->dim) {
+				   free(maclst->macs[i]);
+				   maclst->macs[i] = NULL;
+			   }
+			   else
+				   fprintf(stdout, "Invalid index.\n");
 			   break;
 		   default:			
 			   fprintf(stdout, "\nError: wrong option! Using actual list.\n");
@@ -227,8 +232,10 @@ int fprintMaclist(maclist_t *maclst, char *file)
 		fprintf(stderr, "\nError writing MAC list file \"%s\": %s.\n", file, strerror(errno));
 		return (EXIT_FAILURE);
 	}
-	for (i=0; i<maclst->dim; i++)
-		fprintf(fp, "%s\n", maclst->macs[i]);
+	for (i=0; i<maclst->dim; i++) {
+		if (maclst->macs[i] != NULL)
+			fprintf(fp, "%s\n", maclst->macs[i]);
+	}
 	fclose(fp);
 
 	return (EXIT_SUCCESS);
@@ -351,8 +358,11 @@ int checkVersion()
 	fscanf(fp, "%s %s", vers, build);
 	fclose(fp);
 
-	if (strcmp(vers, VERS) < 0) {
-		fprintf(stdout, "Up-to-date or newer version is in use (local: %s (%s), repo: %s (%s)).\n\n", VERS, BUILD, vers, build);
+	if (strcmp(vers, VERS) < 0 || (strcmp(vers, VERS) == 0 && strcmp(build, BUILD) < 0)) {
+		fprintf(stdout, "Newer version is in use (local: %s [%s], repo: %s [%s]).\n\n", VERS, BUILD, vers, build);
+	}
+	else if (strcmp(vers, VERS) == 0 && strcmp(build, BUILD) == 0) {
+		fprintf(stdout, "Up-to-date version is in use (%s [%s]).\n\n", VERS, BUILD);
 	}
 	else {
 		fprintf(stdout, "\nVersion in use: %s (%s), available: %s (%s)\nCheck \"%s\" for updates!\n\n", VERS, BUILD, vers, build, REPO);

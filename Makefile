@@ -28,4 +28,4 @@ dbginstall: debug
 
 clean:
 	rm obj/*
-	rm bin/*
+	rm bin/airjammer.bin bin/aircrack-cli.bin
