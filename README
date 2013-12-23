@@ -1,11 +1,14 @@
 Aircrack-CLI - Command Line Interface
 =====================================
 
-Version beta-04 (2013-12-20)
+Version beta-04 (2013-12-23)
 
     TODO:
     - full translations
     - REBUILD MAIN
+	- alternatives to network-manager
+	- systemd/service recognizer
+	- integrate air-cat.sh into main
     ===
     - multiple stop/start network-manager
 	- real list for MACs (and proper deletions)

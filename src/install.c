@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-09]
+  Revision    [beta-04, 2013-12-23]
 
 ******************************************************************************/
 
@@ -45,6 +45,7 @@
 #define UBUNTU "Ubuntu"
 #define FEDORA "fedora"
 #define SUSE "SUSE"
+#define ARCH "ARCH"
 
 /*
     NOTE:
@@ -86,6 +87,8 @@ int depInstall()
 		//yum-based
 		else if (id == 'y')
 			system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel xterm wget macchanger -y");
+		else if (id == 'a')
+			system("pacman -S base-devel openssl xterm wget macchanger --noconfirm");
 		else {
 			fprintf(stderr, "ERROR\n");
 			return (EXIT_FAILURE);
@@ -127,6 +130,9 @@ char checkDistro()
     else if (strstr(name, FEDORA) != NULL || strstr(name, SUSE) != NULL) {
 		id = 'y';
     } 
+	else if (strstr(name, ARCH) != NULL) {
+		id = 'a';
+    }
     else {
 		fprintf(stderr, "\nDistribution not supported:\n%s\n", name);
     }
@@ -162,7 +168,7 @@ int akngInstall()
     
     fprintf(stdout, "\n\tDownloading and extracting source code...\n\n");
 
-    sprintf(command, "%s%s && tar -zxvf %s", command, AIRNAME, AIRNAME);
+    sprintf(command, "%s%s && tar -zxvf %s 1> tar.log", command, AIRNAME, AIRNAME);
     system(command);
 
     fprintf(stdout, "\nConfirm installation?  [Y-N]\n");

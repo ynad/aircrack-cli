@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [beta-04, 2013-12-20]
+  Revision    [beta-04, 2013-12-23]
 
 ******************************************************************************/
 
@@ -24,7 +24,7 @@
 
 //Version code - keep UPDATED!
 #define VERS "beta-04"
-#define BUILD "2013-12-20"
+#define BUILD "2013-12-23"
 
 #define BUFF 255
 #define MACLST 100

@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-20]
+  Revision    [beta-04, 2013-12-23]
 
 ******************************************************************************/
 
@@ -154,7 +154,7 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 		   case 3:
 			   fprintf(stdout, "\nInput index you want to remove:\t");
 			   scanf("%d", &i);
-			   if (--i >= 0 && i <= maclst->dim) {
+			   if (--i >= 0 && i < maclst->dim) {
 				   free(maclst->macs[i]);
 				   maclst->macs[i] = NULL;
 			   }
@@ -355,18 +355,25 @@ int checkVersion()
 		fprintf(stderr, "Error reading from file \"%s\": %s\n", "/tmp/VERSION", strerror(errno));
 		return (EXIT_FAILURE);
 	}
-	fscanf(fp, "%s %s", vers, build);
-	fclose(fp);
-
-	if (strcmp(vers, VERS) < 0 || (strcmp(vers, VERS) == 0 && strcmp(build, BUILD) < 0)) {
-		fprintf(stdout, "Newer version is in use (local: %s [%s], repo: %s [%s]).\n\n", VERS, BUILD, vers, build);
-	}
-	else if (strcmp(vers, VERS) == 0 && strcmp(build, BUILD) == 0) {
-		fprintf(stdout, "Up-to-date version is in use (%s [%s]).\n\n", VERS, BUILD);
+	if (fscanf(fp, "%s %s", vers, build) != 2) {
+		fprintf(stderr, "No data collected or no internet connection.\n\n");
+		vers[0] = '-';
+		vers[1] = '\0';
+		build[0] = '-';
+		build[1] = '\0';
 	}
 	else {
-		fprintf(stdout, "\nVersion in use: %s (%s), available: %s (%s)\nCheck \"%s\" for updates!\n\n", VERS, BUILD, vers, build, REPO);
+		if (strcmp(vers, VERS) < 0 || (strcmp(vers, VERS) == 0 && strcmp(build, BUILD) < 0)) {
+			fprintf(stdout, "Newer version is in use (local: %s [%s], repo: %s [%s]).\n\n", VERS, BUILD, vers, build);
+		}
+		else if (strcmp(vers, VERS) == 0 && strcmp(build, BUILD) == 0) {
+			fprintf(stdout, "Up-to-date version is in use (%s [%s]).\n\n", VERS, BUILD);
+		}
+		else {
+			fprintf(stdout, "Version in use: %s (%s), available: %s (%s)\nCheck \"%s\" for updates!\n\n", VERS, BUILD, vers, build, REPO);
+		}
 	}
+	fclose(fp);
 	system("rm -f /tmp/VERSION");
 	return (EXIT_SUCCESS);
 }

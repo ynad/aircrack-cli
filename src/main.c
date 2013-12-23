@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-17]
+  Revision    [beta-04, 2013-12-23]
 
 ******************************************************************************/
 
@@ -238,8 +238,8 @@ static char setDistro(char **stdwlan, char **netwstart, char **netwstop)
 		}
 	}
 	//Redhat-based
-	else if (id == 'y') {
-		*stdwlan = strdup(" wlsp2s0 ");
+	else if (id == 'y' || id == 'a') {
+		*stdwlan = strdup(" wlp2s0 ");
 		*netwstart = strdup("systemctl start NetworkManager.service");
 		*netwstop = strdup("systemctl stop NetworkManager.service");
 		if (*stdwlan == NULL || *netwstart == NULL || *netwstop == NULL) {
@@ -250,7 +250,7 @@ static char setDistro(char **stdwlan, char **netwstart, char **netwstop)
 	}
 	//Default for unknown distribution
 	else if (id == '0') {
-		fprintf(stdout, "\nWarning: there may be misbehavior!\n");
+		fprintf(stdout, "Warning: there may be misbehavior!\n");
 		*stdwlan = strdup(" wlan0 ");
 		*netwstart = strdup("service network-manager start");
 		*netwstop = strdup("service network-manager stop");
@@ -369,7 +369,7 @@ static void stopMonitor(char *stopmon, char *pidpath)
 static void netwCheck(char c, char *netwstart)
 {
     if (c == 'Y') {
-      printf("\nRestarting \"network-manager\"\n");
+      printf("\nRestarting \"network-manager\"...\n");
       system(netwstart);
       printf("\n");
     }

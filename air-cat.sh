@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Simple interface to start cracking of WPA with Aircrack-ng / Hashcat
+# Simple interface to start cracking of WPA keys with Aircrack-ng / Hashcat
 
 function syntax {
 	printf "Usage: $0 [air|cat] [packet-file] [dictionary] [hashcat-binary]\n"
