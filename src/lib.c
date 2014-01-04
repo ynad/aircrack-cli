@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-23]
+  Revision    [beta-04, 2013-12-24]
 
 ******************************************************************************/
 
@@ -88,10 +88,12 @@ void macchanger(char *inmon)
 void freeMem(maclist_t *maclst)
 {
 	int i;
-	for (i=0; i<maclst->dim; i++)
-		free(maclst->macs[i]);
-	free(maclst->macs);
-	free(maclst);
+	if (maclst != NULL) {
+		for (i=0; i<maclst->dim; i++)
+			free(maclst->macs[i]);
+		free(maclst->macs);
+		free(maclst);
+	}
 }
 
 
