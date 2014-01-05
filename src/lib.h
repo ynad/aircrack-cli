@@ -72,5 +72,8 @@ int checkVersion();
 /* Check MAC address format */
 int checkMac(char *);
 
+/* Replace old with new in string str */
+char *replace_str(const char *, const char *, const char *);
+
 
 #endif // LIB_H_INCLUDED

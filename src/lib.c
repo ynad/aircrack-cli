@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-24]
+  Revision    [beta-04, 2014-01-05]
 
 ******************************************************************************/
 
@@ -28,6 +28,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stddef.h>
 
 //Library functions header
 #include "lib.h"
@@ -401,5 +402,39 @@ int checkMac(char *mac)
 			return FALSE;
 	}
 	return TRUE;
+}
+
+
+/* Replace old with new in string str */
+char *replace_str(const char *str, const char *old, const char *new)
+{
+	char *ret, *r;
+	const char *p, *q;
+	size_t oldlen = strlen(old);
+	size_t count, retlen, newlen = strlen(new);
+
+	if (oldlen != newlen) {
+		for (count = 0, p = str; (q = strstr(p, old)) != NULL; p = q + oldlen)
+			count++;
+		/* this is undefined if p - str > PTRDIFF_MAX */
+		retlen = p - str + strlen(p) + count * (newlen - oldlen);
+	} else
+		retlen = strlen(str);
+
+	if ((ret = malloc(retlen + 1)) == NULL)
+		return NULL;
+
+	for (r = ret, p = str; (q = strstr(p, old)) != NULL; p = q + oldlen) {
+		/* this is undefined if q - p > PTRDIFF_MAX */
+		ptrdiff_t l = q - p;
+		memcpy(r, p, l);
+		r += l;
+		memcpy(r, new, newlen);
+
+		r += newlen;
+	}
+	strcpy(r, p);
+
+	return ret;
 }
 
