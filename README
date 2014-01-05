@@ -4,7 +4,6 @@ Aircrack-CLI - Command Line Interface
 Version beta-04 (2014-01-05)
 
     TODO:
-    + alternatives to network-manager
     - systemd/service recognizer
     ===
     - multiple stop/start network-manager

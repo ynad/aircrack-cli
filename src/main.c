@@ -47,7 +47,7 @@ static void installer();
 static void printMenu(char *, char *, maclist_t *, char *);
 static int jammer(char *, char *, maclist_t *, char *, int);
 static void stopMonitor(char*, char*);
-static char netwPrompt(char *, char *);
+static char netwPrompt(char *, char *, char);
 static void netwCheck(char, char *);
 static int checkExit(char c, char *, char *, char *, char *);
 
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
         installer();
 
 	//prompt wheter to stop network-manager
-	c = netwPrompt(netwstop, netwstart);
+	c = netwPrompt(netwstop, netwstart, id);
 
 
     /** STAGE 1 **/
@@ -392,9 +392,9 @@ static void stopMonitor(char *stopmon, char *pidpath)
 
 
 /* Prompt whether to stop network-manager */
-static char netwPrompt(char *netwstop, char *netwstart)
+static char netwPrompt(char *netwstop, char *netwstart, char id)
 {
-	char c, tmp[BUFF], newman[BUFF];
+	char c, tmp[BUFF], newman[BUFF], idname[]={"network-manager"};
 
     c = '0';
     //stop potentially unwanted processes
@@ -404,12 +404,15 @@ static char netwPrompt(char *netwstop, char *netwstart)
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && c != 'E' && fprintf(stdout, "Type only [Y-N]\n"));
 
+	//edit actual network manager
 	if (c == 'E') {
 		fprintf(stdout, "Input new manager name:\t");
 		fgets(tmp, BUFF, stdin);
 		sscanf(tmp, "%s", newman);
-		strcpy(netwstart, replace_str(netwstart, "network-manager", newman));
-		strcpy(netwstop, replace_str(netwstop, "network-manager", newman));
+		if (id == 'y' || id == 'a')
+			strcpy(idname, "NewtworkManager");
+		strcpy(netwstart, replace_str(netwstart, idname, newman));
+		strcpy(netwstop, replace_str(netwstop, idname, newman));
         system(netwstop);
 		c = 'Y';
 	}
