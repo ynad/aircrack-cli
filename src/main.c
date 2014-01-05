@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-26]
+  Revision    [beta-04, 2014-01-05]
 
 ******************************************************************************/
 
@@ -45,7 +45,7 @@ static int argCheck(int, char **, char *, char *, char);
 static void printSyntax(char *, char, char *);
 static void installer();
 static void printMenu(char *, char *, maclist_t *, char *);
-static int jammer(char *, char *, maclist_t *, char *);
+static int jammer(char *, char *, maclist_t *, char *, int);
 static void stopMonitor(char*, char*);
 static char netwPrompt(char *);
 static void netwCheck(char, char *);
@@ -318,15 +318,18 @@ static void printMenu(char *bssid, char *inmon, maclist_t *maclst, char *argv0)
 
     //action menu
     do {
-        fprintf(stdout, "\n\nChoose an action:\n=================\n\t1. De-authenticate client(s)\n\t2. Jammer\n\t0. Stop scanner\n");
+        fprintf(stdout, "\n\nChoose an action:\n=================\n\t1. De-authenticate client(s)\n\t2. Jammer (MAC list)\n\t3. Jammer (broadcast)\n\t0. Stop scanner\n");
         fscanf(stdin, "%d", &opz);
         switch (opz) {
             case 1:
 				maclst = deauthClient(bssid, inmon, maclst);
                 break;
 		    case 2:
-				jammer(bssid, inmon, maclst, argv0);
+				jammer(bssid, inmon, maclst, argv0, 1);
 				break;
+		case 3:
+			    jammer(bssid, inmon, maclst, argv0, 2);
+			    break;
             case 0:
                 break;
             default:
@@ -337,17 +340,19 @@ static void printMenu(char *bssid, char *inmon, maclist_t *maclst, char *argv0)
 
 
 /* Interface to AirJammer */
-static int jammer(char *bssid, char *inmon, maclist_t *maclst, char *argv0)
+static int jammer(char *bssid, char *inmon, maclist_t *maclst, char *argv0, int flag)
 {
 	char cmd[BUFF], path[BUFF], argvz[BUFF], list[]={"/tmp/maclist.txt"};
 	int i, stop=0;
 
-	if (maclst == NULL) {
-		fprintf(stdout, "\nError: MAC list is still empty!\n");
-		return (EXIT_FAILURE);
-	}
-	if (fprintMaclist(maclst, list) == EXIT_FAILURE) {
-		return (EXIT_FAILURE);
+	if (flag == 1) {
+		if (maclst == NULL) {
+			fprintf(stdout, "\nError: MAC list is still empty!\n");
+			return (EXIT_FAILURE);
+		}
+		if (fprintMaclist(maclst, list) == EXIT_FAILURE) {
+			return (EXIT_FAILURE);
+		}
 	}
 	
 	if (getcwd(path, BUFF) == NULL) {
@@ -364,7 +369,10 @@ static int jammer(char *bssid, char *inmon, maclist_t *maclst, char *argv0)
 			stop = 1;
 		}
 	}
-	sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %s/%s/airjammer.bin %s %s %s &", path, argvz, bssid, inmon, list);
+	if (flag == 2)
+		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %s/%s/airjammer.bin %s %s %s &", path, argvz, bssid, inmon, "BROADCAST");
+	else
+		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %s/%s/airjammer.bin %s %s %s &", path, argvz, bssid, inmon, list);
 	system(cmd);
 
 	return (EXIT_SUCCESS);
