@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2013-12-23]
+  Revision    [beta-04, 2014-01-05]
 
 ******************************************************************************/
 
@@ -40,7 +40,7 @@
 #define TRUE 1
 
 #define TMPDIR "/tmp/ngtmp/"
-#define AIRNAME "aircrack-ng-1.2-beta1.tar.gz"
+#define AIRNAME "aircrack-ng-1.2-beta2.tar.gz"
 #define DISTRO "/proc/version"
 #define UBUNTU "Ubuntu"
 #define FEDORA "fedora"
