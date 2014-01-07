@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [beta-04, 2014-01-05]
+  Revision    [beta-04, 2014-01-07]
 
 ******************************************************************************/
 
@@ -24,7 +24,7 @@
 
 //Version code - keep UPDATED!
 #define VERS "beta-04"
-#define BUILD "2014-01-05"
+#define BUILD "2014-01-07"
 
 #define BUFF 255
 #define MACLST 100
@@ -36,8 +36,14 @@
 typedef struct maclist maclist_t;
 
 
+/* Set environment variables and strings depending on OS type */
+char setDistro(char **, char **, char **, char *);
+
 /* PID files handling */
 FILE *pidOpen(char *, char *);
+
+/* Check MAC address format */
+int checkMac(char *);
 
 /* MAC address modifier */
 void macchanger(char*);
@@ -69,11 +75,14 @@ int procNumb();
 /* Check current version with info on online repo */
 int checkVersion();
 
-/* Check MAC address format */
-int checkMac(char *);
-
 /* Replace old with new in string str */
 char *replace_str(const char *, const char *, const char *);
+
+/* Search network interfaces and chek if are wireless */
+char *findWiface(int);
+
+/* Check if is wireless or not */
+int check_wireless(const char *, char *);
 
 
 #endif // LIB_H_INCLUDED

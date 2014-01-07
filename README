@@ -1,14 +1,12 @@
 Aircrack-CLI - Command Line Interface
 =====================================
 
-Version beta-04 (2014-01-05)
+Version beta-04 (2014-01-07)
 
     TODO:
-    - systemd/service recognizer
     ===
     - multiple stop/start network-manager
     - real list for MACs (and proper deletions)
-    - options from arguments: terminal, output file(s), etc.
 
 
     BUGS:

@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2014-01-05]
+  Revision    [beta-04, 2014-01-07]
 
 ******************************************************************************/
 
@@ -36,6 +36,8 @@
 //Prototypes
 static void *jammer();
 static void sigHandler(int);
+static void printSyntax(char *);
+static int checkMon(char *);
 
 //error variable
 //xextern int errno;
@@ -55,10 +57,11 @@ int main (int argc, char *argv[])
 	signal(SIGINT, sigHandler);
 
 	//syntax
-	if (argc < 4) {
-		fprintf(stderr, "Argument error. Syntax:\n\t%s [BSSID] [MONITOR-IF] [MAC-LIST-FILE/BROADCAST]\n", argv[0]);
+	if (argc < 3) {
+		printSyntax(argv[0]);
 		return (EXIT_FAILURE);
 	}
+
 	//check execution permissions
     if (getgid() != 0) {
         fprintf(stderr, "Run it as root!\n");
@@ -69,6 +72,9 @@ int main (int argc, char *argv[])
 		fprintf(stderr, "Error: wrong format for BSSID (%s).\n", argv[1]);
 		return (EXIT_FAILURE);
 	}
+	//check monitor
+	if (checkMon(argv[2]) == EXIT_FAILURE)
+		return (EXIT_FAILURE);
 
 	//setting up variables
 	bssid = argv[1];
@@ -76,7 +82,7 @@ int main (int argc, char *argv[])
 	setbuf(stdout, NULL);
 
 	//launch broadcast deauth in single thread if specified from arguments
-	if (!strcmp(argv[3], "BROADCAST")) { 
+	if (argc == 3) {
 		jammer(NULL);
 	}
 	else {
@@ -89,7 +95,6 @@ int main (int argc, char *argv[])
 			freeMem(maclst);
 			return (EXIT_FAILURE);
 		}
-
 		//creation of threads
 		fprintf(stdout, "\tStarting %d deauths:\n", dim);
 		for (i=0; i<dim; i++) {
@@ -137,5 +142,40 @@ static void sigHandler(int sig)
 	//free and exit
 	freeMem(maclst);
 	exit(EXIT_FAILURE);
+}
+
+
+/* Prints program syntax */
+static void printSyntax(char *name)
+{
+	fprintf(stderr, "Argument error. Syntax:\n   %s [BSSID] [MONITOR-IF] <MAC-LIST-FILE>\n", name);
+	fprintf(stderr, "\t[BSSID]\t\t  identifier of network target\n\t[MONITOR-IF]\t  wireless interface in monitor mode\n\t<MAC-LIST-FILE>\t  if omitted starts broadcast jammer\n");
+}
+
+
+/* Check existance of monitor interface */
+static int checkMon(char *mon)
+{
+	char *iface, *token;
+	int flag;
+
+	flag = 1;
+	if ((iface = strdup(findWiface(FALSE))) == NULL)
+		fprintf(stderr, "Error: can't determine network intefaces.\n");
+	else {
+		token=strtok(iface, " ");
+        while (token && flag) {
+			if (strcmp(token, mon) == 0)
+				flag = 0;
+            token=strtok(NULL, " ");
+        }
+		if (token == NULL && flag) {
+			fprintf(stderr, "Error: wireless interface \"%s\" not found, no such device.\n", mon);
+			free(iface); free(token);
+			return (EXIT_FAILURE);
+		}
+	}
+	free(iface); free(token);
+	return (EXIT_SUCCESS);
 }
 

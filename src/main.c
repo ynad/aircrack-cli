@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2014-01-05]
+  Revision    [beta-04, 2014-01-07]
 
 ******************************************************************************/
 
@@ -40,16 +40,15 @@
 
 //Prototypes
 static void printHeader();
-static char setDistro(char **, char **, char **);
 static int argCheck(int, char **, char *, char *, char);
 static void printSyntax(char *, char, char *);
 static void installer();
 static void printMenu(char *, char *, maclist_t *, char *);
 static int jammer(char *, char *, maclist_t *, char *, int);
 static void stopMonitor(char*, char*);
-static char netwPrompt(char *, char *, char);
-static void netwCheck(char, char *);
-static int checkExit(char c, char *, char *, char *, char *);
+static char netwPrompt(char *, char *, char, char *);
+static void netwCheck(char, char *, char *);
+static int checkExit(char c, char *, char *, char *, char *, char *);
 
 //error variable
 //extern int errno;
@@ -63,7 +62,7 @@ int main(int argc, char *argv[])
 	maclist_t *maclst=NULL;
 
     //program strings
-    char c, id, can[5], bssid[20], fout[BUFF], inmon[10]={"mon0"}, pidpath[20]={"/tmp/aircli-pid-0"}, *stdwlan=NULL, *netwstart=NULL, *netwstop=NULL,
+    char c, id, can[5], bssid[20], fout[BUFF], manag[BUFF], inmon[10]={"mon0"}, pidpath[20]={"/tmp/aircli-pid-0"}, *stdwlan=NULL, *netwstart=NULL, *netwstop=NULL,
          startmon[30]={"airmon-ng start"}, stopmon[30]={"airmon-ng stop "},
          montmp[BUFF]={"xterm 2> /dev/null -T MonitorTemp -e airodump-ng --encrypt wpa"},
 		 scanmon[BUFF*2]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
@@ -75,7 +74,7 @@ int main(int argc, char *argv[])
     printHeader();
 
 	//set environment variables and strings depending on OS type
-	id = setDistro(&stdwlan, &netwstart, &netwstop);
+	id = setDistro(&stdwlan, &netwstart, &netwstop, manag);
 
 	//check arguments and set stuff
 	inst = argCheck(argc, argv, startmon, stdwlan, id);
@@ -91,7 +90,7 @@ int main(int argc, char *argv[])
         installer();
 
 	//prompt wheter to stop network-manager
-	c = netwPrompt(netwstop, netwstart, id);
+	c = netwPrompt(netwstop, netwstart, id, manag);
 
 
     /** STAGE 1 **/
@@ -120,13 +119,13 @@ int main(int argc, char *argv[])
 		fscanf(stdin, "%s", can);
 		sscanf(can, "%d", &opz);
 	} while ((opz < 1 || opz > 14) && opz != -1 && fprintf(stdout, "Allowed only channels in range [1-14]:\t"));
-    checkExit(c, can, stopmon, pidpath, netwstart);
+    checkExit(c, can, stopmon, pidpath, netwstart, manag);
 
     fprintf(stdout, "\nTarget BSSID (-1 to clean-exit):\t");
 	do {
 		fscanf(stdin, "%s", bssid);
 	} while (strcmp(bssid, "-1") && checkMac(bssid) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
-    checkExit(c, bssid, stopmon, pidpath, netwstart);
+    checkExit(c, bssid, stopmon, pidpath, netwstart, manag);
 
     //close scanner and monitor
     system(stopmon);
@@ -147,7 +146,7 @@ int main(int argc, char *argv[])
 	getchar();
 	fgets(fout, BUFF, stdin);
 	fout[strlen(fout)-1] = '\0';
-    checkExit(c, fout, stopmon, pidpath, netwstart);
+    checkExit(c, fout, stopmon, pidpath, netwstart, manag);
 
     //scanner handshake
     sprintf(scanmon, "%s %s -c %s -w \"%s\" %s --ignore-negative-one &", scanmon, bssid, can, fout, inmon);
@@ -159,18 +158,14 @@ int main(int argc, char *argv[])
 
 	/** FINAL STAGE **/
 
-    //close monitor, network-manager check and memory free
+    //close monitor, network manager check and memory free
     stopMonitor(stopmon, pidpath);
-    netwCheck(c, netwstart);
+    netwCheck(c, netwstart, manag);
 	freeMem(maclst);
 	free(stdwlan); free(netwstart); free(netwstop);
 
     //greetings
-    fprintf(stdout, "Terminated. Data written to file \"%s\". Launch \"./air-cat.sh\" to start cracking.\n", fout);
-    fprintf(stdout, "Press any key to exit.\n");
-
-    getchar();
-    getchar();
+    fprintf(stdout, "\nTerminated.\nData written to file \"%s\". Launch \"./air-cat.sh\" to start cracking.\n\n", fout);
 
     return (EXIT_SUCCESS);
 }
@@ -182,53 +177,6 @@ static void printHeader()
     fprintf(stdout, "\n =======================================================================\n");
     fprintf(stdout, "    Aircrack-CLI  |  Command Line Interface - v. %s (%s)\n", VERS, BUILD);
     fprintf(stdout, " =======================================================================\n\n");
-}
-
-
-/* Set environment variables and strings depending on OS type */
-static char setDistro(char **stdwlan, char **netwstart, char **netwstop)
-{
-	char id;
-
-	//clear error value
-	errno = 0;	
-
-	id = checkDistro();
-	//Debian-based
-	if (id == 'u') {
-		*stdwlan = strdup(" wlan0 ");
-		*netwstart = strdup("service network-manager start");
-		*netwstop = strdup("service network-manager stop");
-		if (*stdwlan == NULL || *netwstart == NULL || *netwstop == NULL) {
-			fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
-			free(*stdwlan); free(*netwstart); free(*netwstop);
-			return '0';
-		}
-	}
-	//Redhat-based
-	else if (id == 'y' || id == 'a') {
-		*stdwlan = strdup(" wlp2s0 ");
-		*netwstart = strdup("systemctl start NetworkManager.service");
-		*netwstop = strdup("systemctl stop NetworkManager.service");
-		if (*stdwlan == NULL || *netwstart == NULL || *netwstop == NULL) {
-			fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
-			free(*stdwlan); free(*netwstart); free(*netwstop);
-			return '0';
-		}
-	}
-	//Default for unknown distribution
-	else if (id == '0') {
-		fprintf(stdout, "Warning: there may be misbehavior!\n");
-		*stdwlan = strdup(" wlan0 ");
-		*netwstart = strdup("service network-manager start");
-		*netwstop = strdup("service network-manager stop");
-		if (*stdwlan == NULL || *netwstart == NULL || *netwstop == NULL) {
-			fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
-			free(*stdwlan); free(*netwstart); free(*netwstop);
-			return '0';
-		}
-	}
-	return id;
 }
 
 
@@ -246,8 +194,11 @@ static int argCheck(int argc, char **argv, char *startmon, char *stdwlan, char i
             else
                 strcat(startmon, stdwlan);
         }
-        else
+        else {
             sprintf(startmon, "%s %s ", startmon, argv[1]);
+			if (argc == 3 && (!strcmp(argv[2], "N") || !strcmp(argv[2], "n")))
+				inst = FALSE;
+		}
     }
     else {    //standard interface
         strcat(startmon, stdwlan);	
@@ -270,7 +221,7 @@ static void printSyntax(char *name, char id, char *stdwlan)
     fprintf(stdout, "%s [N] [WLAN-IF]", name);
 	if (id != 'u')
 		fprintf(stdout, "\"");
-    fprintf(stdout, "\nOptional parameters:\n\t[N] skips installation\n\t[WLAN-IF] specifies wireless interface (default \"%s\")\n\n", stdwlan);
+    fprintf(stdout, "\nOptional parameters:\n\t[N]\t    skips installation\n\t[WLAN-IF]   specifies wireless interface (default \"%s\")\n\n", stdwlan);
 }
 
 
@@ -370,7 +321,7 @@ static int jammer(char *bssid, char *inmon, maclist_t *maclst, char *argv0, int 
 		}
 	}
 	if (flag == 2)
-		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %s/%s/airjammer.bin %s %s %s &", path, argvz, bssid, inmon, "BROADCAST");
+		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %s/%s/airjammer.bin %s %s &", path, argvz, bssid, inmon);
 	else
 		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %s/%s/airjammer.bin %s %s %s &", path, argvz, bssid, inmon, list);
 	system(cmd);
@@ -391,14 +342,14 @@ static void stopMonitor(char *stopmon, char *pidpath)
 }
 
 
-/* Prompt whether to stop network-manager */
-static char netwPrompt(char *netwstop, char *netwstart, char id)
+/* Prompt whether to stop network manager */
+static char netwPrompt(char *netwstop, char *netwstart, char id, char *manag)
 {
-	char c, tmp[BUFF], newman[BUFF], idname[]={"network-manager"};
+	char c, tmp[BUFF], newman[BUFF];
 
     c = '0';
     //stop potentially unwanted processes
-    fprintf(stdout, "\nDo you want to stop \"network-manager\" (E to input different manager)?  [Y-N]\n");
+    fprintf(stdout, "\nDo you want to stop \"%s\" (E to input different manager)?  [Y-N]\n", manag);
 	do {
 		fscanf(stdin, "%c%*c", &c);
 		c = toupper(c);
@@ -409,10 +360,9 @@ static char netwPrompt(char *netwstop, char *netwstart, char id)
 		fprintf(stdout, "Input new manager name:\t");
 		fgets(tmp, BUFF, stdin);
 		sscanf(tmp, "%s", newman);
-		if (id == 'y' || id == 'a')
-			strcpy(idname, "NewtworkManager");
-		strcpy(netwstart, replace_str(netwstart, idname, newman));
-		strcpy(netwstop, replace_str(netwstop, idname, newman));
+		strcpy(netwstart, replace_str(netwstart, manag, newman));
+		strcpy(netwstop, replace_str(netwstop, manag, newman));
+		strcpy(manag, newman);
         system(netwstop);
 		c = 'Y';
 	}
@@ -422,11 +372,11 @@ static char netwPrompt(char *netwstop, char *netwstart, char id)
 }
 
 
-/* Restart network-manager if stopped */
-static void netwCheck(char c, char *netwstart)
+/* Restart network manager if stopped */
+static void netwCheck(char c, char *netwstart, char *manag)
 {
     if (c == 'Y') {
-      fprintf(stdout, "\nRestarting \"network-manager\"...\n");
+		fprintf(stdout, "\nRestarting \"%s\"...\n", manag);
       system(netwstart);
       fprintf(stdout, "\n");
     }
@@ -434,10 +384,10 @@ static void netwCheck(char c, char *netwstart)
 
 
 /* Check wheter to clean-exit when given "-1" string */
-static int checkExit(char c, char *string, char *stopmon, char *pidpath, char *netwstart)
+static int checkExit(char c, char *string, char *stopmon, char *pidpath, char *netwstart, char *manag)
 {
     if (!strcmp(string, "-1")) {
-        netwCheck(c, netwstart);
+        netwCheck(c, netwstart, manag);
         stopMonitor(stopmon, pidpath);
         fprintf(stdout, "Exiting...\n");
         exit(EXIT_FAILURE);

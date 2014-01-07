@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2014-01-05]
+  Revision    [beta-04, 2014-01-06]
 
 ******************************************************************************/
 
@@ -29,9 +29,16 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stddef.h>
+#include <ifaddrs.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <linux/wireless.h>
 
 //Library functions header
 #include "lib.h"
+//Installer handler header
+#include "install.h"
 
 //URL to repo and file containing version info
 #define REPO "github.com/ynad/aircrack-cli/"
@@ -45,6 +52,94 @@ struct maclist {
 	char **macs;
 	int dim;
 };
+
+
+/* Set environment variables and strings depending on OS type */
+char setDistro(char **stdwlan, char **netwstart, char **netwstop, char *manag)
+{
+	char id, tmp[BUFF];
+
+	//clear error value
+	errno = 0;	
+
+	id = checkDistro();
+
+	//set network-manager
+    if (access("/usr/sbin/NetworkManager", F_OK) == 0) {
+		if (id == 'y' || id == 'a')
+			strcpy(manag, "NetworkManager");
+		else
+			strcpy(manag, "network-manager");
+	}
+	//Wicd
+	else if (access("/usr/bin/wicd", F_OK) == 0)
+		strcpy(manag, "wicd");
+	//default
+	else
+		strcpy(manag, "network-manager");
+
+	//set system service controller
+	if (access("/usr/bin/systemctl", F_OK) == 0) {
+		sprintf(tmp, "systemctl start %s.service", manag);
+		*netwstart = strdup(tmp);
+		sprintf(tmp, "systemctl stop %s.service", manag);
+		*netwstop = strdup(tmp);
+		if (*netwstart == NULL || *netwstop == NULL) {
+			fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
+			free(*netwstart); free(*netwstop);
+			return '0';
+		}
+	}
+	else if (access("/usr/bin/service", F_OK) == 0) {
+		sprintf(tmp, "service %s start", manag);
+		*netwstart = strdup(tmp);
+		sprintf(tmp, "service %s stop", manag);
+		*netwstop = strdup(tmp);
+		if (*netwstart == NULL || *netwstop == NULL) {
+			fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
+			free(*netwstart); free(*netwstop);
+			return '0';
+		}
+	}
+
+	//set network wireless interface name, if automatic search fails use distro dependant settings
+	*stdwlan = findWiface(TRUE);
+	if (*stdwlan != NULL) {
+		sprintf(tmp, " %s ", *stdwlan);
+		*stdwlan = strdup(tmp);
+	}
+	else {
+		//Debian-based
+		if (id == 'u') {
+			*stdwlan = strdup(" wlan0 ");
+			if (*stdwlan == NULL) {
+				fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
+				free(*netwstart); free(*netwstop);
+				return '0';
+			}
+		}
+		//Redhat-based
+		else if (id == 'y' || id == 'a') {
+			*stdwlan = strdup(" wlp2s0 ");
+			if (*stdwlan == NULL) {
+				fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
+				free(*netwstart); free(*netwstop);
+				return '0';
+			}
+		}
+		//Default for unknown distribution
+		else if (id == '0') {
+			fprintf(stdout, "Warning: there may be misbehavior!\n");
+			*stdwlan = strdup(" wlan0 ");
+			if (*stdwlan == NULL) {
+				fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
+				free(*netwstart); free(*netwstop);
+				return '0';
+			}
+		}
+	}
+	return id;
+} 
 
 
 /* PID files handling */
@@ -63,6 +158,29 @@ FILE *pidOpen(char *inmon, char *pidpath)
         fprintf(stderr, "Unable to write PID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", pidpath, strerror(errno));
 
     return fpid;
+}
+
+
+/* Check MAC address format */
+int checkMac(char *mac)
+{
+	int i, len, punt=2;
+
+	//address of wrong lenght
+	if ((len = strlen(mac)) != MACLEN)
+		return FALSE;
+
+	//scan char by char to check for hexadecimal values and ':' separators
+	for (i=0; i<len; i++) {
+		if (i == punt) {
+			if (mac[i] != ':')
+				return FALSE;
+			punt += 3;
+		}
+		else if (isxdigit((int)mac[i]) == FALSE)
+			return FALSE;
+	}
+	return TRUE;
 }
 
 
@@ -382,29 +500,6 @@ int checkVersion()
 }
 
 
-/* Check MAC address format */
-int checkMac(char *mac)
-{
-	int i, len, punt=2;
-
-	//address of wrong lenght
-	if ((len = strlen(mac)) != MACLEN)
-		return FALSE;
-
-	//scan char by char to check for hexadecimal values and ':' separators
-	for (i=0; i<len; i++) {
-		if (i == punt) {
-			if (mac[i] != ':')
-				return FALSE;
-			punt += 3;
-		}
-		else if (isxdigit((int)mac[i]) == FALSE)
-			return FALSE;
-	}
-	return TRUE;
-}
-
-
 /* Replace old with new in string str */
 char *replace_str(const char *str, const char *old, const char *new)
 {
@@ -436,5 +531,72 @@ char *replace_str(const char *str, const char *old, const char *new)
 	strcpy(r, p);
 
 	return ret;
+}
+
+
+/* Search network interfaces and chek if are wireless */
+char *findWiface(int flag)
+{
+	char *res;
+	struct ifaddrs *ifaddr, *ifa;
+
+	//clear error value
+	errno = 0;
+ 
+	if (getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		return NULL;
+	}
+	//results string
+	if ((res = (char *)malloc(BUFF * sizeof(char))) == NULL) {
+		fprintf(stderr, "Error allocating string (dim. %d): %s.\n", BUFF, strerror(errno));
+	}
+	res[0] = '\0';
+ 
+	/* Walk through linked list, maintaining head pointer so we
+	   can free list later */
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		char protocol[IFNAMSIZ]  = {0};
+ 
+		if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_PACKET) 
+			continue;
+ 
+		if (check_wireless(ifa->ifa_name, protocol)) {
+			strcat(res, ifa->ifa_name);
+			//returns firt result if flag is TRUE
+			if (flag == TRUE) {
+				freeifaddrs(ifaddr);
+				return res;
+			}
+			//else concatenates each found interface
+			strcat(res, " ");
+		} 
+	}
+	freeifaddrs(ifaddr);
+	return res;
+}
+
+
+/* Check if is wireless or not */
+int check_wireless(const char *ifname, char *protocol)
+{
+	int sock = -1;
+	struct iwreq pwrq;
+	memset(&pwrq, 0, sizeof(pwrq));
+	strncpy(pwrq.ifr_name, ifname, IFNAMSIZ);
+ 
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		perror("socket");
+		return 0;
+	}
+ 
+	if (ioctl(sock, SIOCGIWNAME, &pwrq) != -1) {
+		if (protocol) strncpy(protocol, pwrq.u.name, IFNAMSIZ);
+		close(sock);
+		return 1;
+	}
+ 
+	close(sock);
+	return 0;
 }
 

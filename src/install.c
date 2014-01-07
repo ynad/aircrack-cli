@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2014-01-05]
+  Revision    [beta-04, 2014-01-06]
 
 ******************************************************************************/
 
@@ -43,13 +43,14 @@
 #define AIRNAME "aircrack-ng-1.2-beta2.tar.gz"
 #define DISTRO "/proc/version"
 #define UBUNTU "Ubuntu"
+#define DEBIAN "Debian"
 #define FEDORA "fedora"
 #define SUSE "SUSE"
 #define ARCH "ARCH"
 
 /*
     NOTE:
-        - supported only OS debian-based e RedHad-based (YUM/rpm) [Fedora, (Open)SUSE]
+        - supported only OS debian-based and RedHad-based (YUM/rpm) [Fedora, (Open)SUSE]
 
 */
 
@@ -124,7 +125,7 @@ char checkDistro()
 	}
     fclose(fp);
 
-    if (strstr(name, UBUNTU) != NULL) {
+    if (strstr(name, UBUNTU) != NULL || strstr(name, DEBIAN) != NULL) {
 		id = 'u';
     }
     else if (strstr(name, FEDORA) != NULL || strstr(name, SUSE) != NULL) {
@@ -224,3 +225,4 @@ int akngInstall()
     fprintf(stdout, "\n INSTALLATION COMPLETED!\n\n");
     return (EXIT_SUCCESS);
 }
+
