@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2014-01-06]
+  Revision    [beta-05, 2014-01-08]
 
 ******************************************************************************/
 
@@ -104,7 +104,7 @@ char setDistro(char **stdwlan, char **netwstart, char **netwstop, char *manag)
 
 	//set network wireless interface name, if automatic search fails use distro dependant settings
 	*stdwlan = findWiface(TRUE);
-	if (*stdwlan != NULL) {
+	if (*stdwlan != NULL && strlen(*stdwlan) > 0) {
 		sprintf(tmp, " %s ", *stdwlan);
 		*stdwlan = strdup(tmp);
 	}
@@ -185,21 +185,24 @@ int checkMac(char *mac)
 
 
 /* MAC address modifier */
-void macchanger(char *inmon)
+void macchanger(char *inmon, int flag)
 {
-    char ifcnf[23], macchg[25]={"macchanger -a "};
+    char ifcnf[23], macchg[25];
 
     //shutting down interface
     sprintf(ifcnf, "ifconfig %s down", inmon);
     system(ifcnf);
 
-    //changing MAC with a new one randomly generated
-    strcat(macchg, inmon);
+    //changing MAC with a new one randomly generated or reset to permanent
+	if (flag == FALSE)
+		sprintf(macchg, "macchanger -p %s", inmon);
+	else
+		sprintf(macchg, "macchanger -a %s", inmon);
     system(macchg);
 
     //restarting interface
-    sprintf(ifcnf, "ifconfig %s up", inmon);
-    system(ifcnf);
+    //sprintf(ifcnf, "ifconfig %s up", inmon);
+    //system(ifcnf);
 }
 
 

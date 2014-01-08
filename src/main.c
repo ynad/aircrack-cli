@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-04, 2014-01-07]
+  Revision    [beta-05, 2014-01-08]
 
 ******************************************************************************/
 
@@ -40,15 +40,15 @@
 
 //Prototypes
 static void printHeader();
-static int argCheck(int, char **, char *, char *, char);
+static int argCheck(int, char **, char, char *, char *);
 static void printSyntax(char *, char, char *);
 static void installer();
-static void printMenu(char *, char *, maclist_t *, char *);
-static int jammer(char *, char *, maclist_t *, char *, int);
+static void printMenu(char *, char *, char *, maclist_t *);
+static int jammer(char *, char *, char *, maclist_t *, int);
 static void stopMonitor(char*, char*);
-static char netwPrompt(char *, char *, char, char *);
-static void netwCheck(char, char *, char *);
-static int checkExit(char c, char *, char *, char *, char *, char *);
+static char netwPrompt(char *, char *, char *, char *);
+static void netwCheck(char, char *, char *, char *);
+static int checkExit(char c, char *, char *, char *, char *, char *, char *, char *);
 
 //error variable
 //extern int errno;
@@ -77,11 +77,12 @@ int main(int argc, char *argv[])
 	id = setDistro(&stdwlan, &netwstart, &netwstop, manag);
 
 	//check arguments and set stuff
-	inst = argCheck(argc, argv, startmon, stdwlan, id);
+	inst = argCheck(argc, argv, id, startmon, stdwlan);
 
     //check execution rights
     if (getgid() != 0) {
         fprintf(stdout, "Run the program with administrator rights!\n\n");
+		free(stdwlan); free(netwstart); free(netwstop);
 		return (EXIT_FAILURE);
     }
 
@@ -90,7 +91,7 @@ int main(int argc, char *argv[])
         installer();
 
 	//prompt wheter to stop network-manager
-	c = netwPrompt(netwstop, netwstart, id, manag);
+	c = netwPrompt(netwstart, netwstop, stdwlan, manag);
 
 
     /** STAGE 1 **/
@@ -104,7 +105,8 @@ int main(int argc, char *argv[])
 		fclose(fpid);
 
     //monitor MAC changer (use macchanger)
-    macchanger(inmon);
+	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
+    macchanger(inmon, TRUE);
 
     //set stop monitor
     strcat(stopmon, inmon);
@@ -119,13 +121,13 @@ int main(int argc, char *argv[])
 		fscanf(stdin, "%s", can);
 		sscanf(can, "%d", &opz);
 	} while ((opz < 1 || opz > 14) && opz != -1 && fprintf(stdout, "Allowed only channels in range [1-14]:\t"));
-    checkExit(c, can, stopmon, pidpath, netwstart, manag);
+    checkExit(c, can, stopmon, pidpath, netwstart, netwstop, stdwlan, manag);
 
     fprintf(stdout, "\nTarget BSSID (-1 to clean-exit):\t");
 	do {
 		fscanf(stdin, "%s", bssid);
 	} while (strcmp(bssid, "-1") && checkMac(bssid) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
-    checkExit(c, bssid, stopmon, pidpath, netwstart, manag);
+    checkExit(c, bssid, stopmon, pidpath, netwstart, netwstop, stdwlan, manag);
 
     //close scanner and monitor
     system(stopmon);
@@ -139,30 +141,32 @@ int main(int argc, char *argv[])
     system(startmon);
 
     //monitor MAC changer (use macchanger)
-    macchanger(inmon);
+	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
+    macchanger(inmon, TRUE);
 
     //output file
     fprintf(stdout, "\nOutput file (-1 to clean-exit):\t");
 	getchar();
 	fgets(fout, BUFF, stdin);
 	fout[strlen(fout)-1] = '\0';
-    checkExit(c, fout, stopmon, pidpath, netwstart, manag);
+    checkExit(c, fout, stopmon, pidpath, netwstart, netwstop, stdwlan, manag);
 
     //scanner handshake
     sprintf(scanmon, "%s %s -c %s -w \"%s\" %s --ignore-negative-one &", scanmon, bssid, can, fout, inmon);
     system(scanmon);
 
 	//ciclic menu and action chooser
-	printMenu(bssid, inmon, maclst, argv[0]);
+	printMenu(argv[0], bssid, inmon, maclst);
 
 
 	/** FINAL STAGE **/
+	fprintf(stdout, "Exiting...\n");
 
     //close monitor, network manager check and memory free
     stopMonitor(stopmon, pidpath);
-    netwCheck(c, netwstart, manag);
-	freeMem(maclst);
+    netwCheck(c, netwstart, stdwlan, manag);
 	free(stdwlan); free(netwstart); free(netwstop);
+	freeMem(maclst);
 
     //greetings
     fprintf(stdout, "\nTerminated.\nData written to file \"%s\". Launch \"./air-cat.sh\" to start cracking.\n\n", fout);
@@ -181,7 +185,7 @@ static void printHeader()
 
 
 /* Check arguments and set stuff */
-static int argCheck(int argc, char **argv, char *startmon, char *stdwlan, char id)
+static int argCheck(int argc, char **argv, char id, char *startmon, char *stdwlan)
 {
 	int inst=TRUE;
 
@@ -209,7 +213,7 @@ static int argCheck(int argc, char **argv, char *startmon, char *stdwlan, char i
 
 
 /* Prints program syntax */
-static void printSyntax(char *name, char id, char *stdwlan)
+static void printSyntax(char *argv0, char id, char *stdwlan)
 {
     fprintf(stdout, "\nSyntax: ");	
     if (id == 'u')         //Debian-based
@@ -218,7 +222,7 @@ static void printSyntax(char *name, char id, char *stdwlan)
 		fprintf(stdout, "su -c \"");
 	else    //others
 		fprintf(stdout, "su -c \"");
-    fprintf(stdout, "%s [N] [WLAN-IF]", name);
+    fprintf(stdout, "%s [N] [WLAN-IF]", argv0);
 	if (id != 'u')
 		fprintf(stdout, "\"");
     fprintf(stdout, "\nOptional parameters:\n\t[N]\t    skips installation\n\t[WLAN-IF]   specifies wireless interface (default \"%s\")\n\n", stdwlan);
@@ -263,7 +267,7 @@ static void installer()
 
 
 /* Ciclic print menu and exec actions */
-static void printMenu(char *bssid, char *inmon, maclist_t *maclst, char *argv0)
+static void printMenu(char *argv0, char *bssid, char *inmon, maclist_t *maclst)
 {
 	int opz = -1;
 
@@ -276,10 +280,10 @@ static void printMenu(char *bssid, char *inmon, maclist_t *maclst, char *argv0)
 				maclst = deauthClient(bssid, inmon, maclst);
                 break;
 		    case 2:
-				jammer(bssid, inmon, maclst, argv0, 1);
+				jammer(argv0, bssid, inmon, maclst, 1);
 				break;
 		case 3:
-			    jammer(bssid, inmon, maclst, argv0, 2);
+			    jammer(argv0, bssid, inmon, maclst, 2);
 			    break;
             case 0:
                 break;
@@ -291,7 +295,7 @@ static void printMenu(char *bssid, char *inmon, maclist_t *maclst, char *argv0)
 
 
 /* Interface to AirJammer */
-static int jammer(char *bssid, char *inmon, maclist_t *maclst, char *argv0, int flag)
+static int jammer(char *argv0, char *bssid, char *inmon, maclist_t *maclst, int flag)
 {
 	char cmd[BUFF], path[BUFF], argvz[BUFF], list[]={"/tmp/maclist.txt"};
 	int i, stop=0;
@@ -343,7 +347,7 @@ static void stopMonitor(char *stopmon, char *pidpath)
 
 
 /* Prompt whether to stop network manager */
-static char netwPrompt(char *netwstop, char *netwstart, char id, char *manag)
+static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *manag)
 {
 	char c, tmp[BUFF], newman[BUFF];
 
@@ -363,33 +367,40 @@ static char netwPrompt(char *netwstop, char *netwstart, char id, char *manag)
 		strcpy(netwstart, replace_str(netwstart, manag, newman));
 		strcpy(netwstop, replace_str(netwstop, manag, newman));
 		strcpy(manag, newman);
-        system(netwstop);
 		c = 'Y';
 	}
-    else if (c == 'Y')
+	//in case of Y or E, stop network manager and change MAC of stdwlan
+    if (c == 'Y') {
         system(netwstop);
+		fprintf(stdout, "\nChanging MAC of interface \"%s\"...\n", stdwlan);
+		macchanger(stdwlan, TRUE);
+	}
 	return c;
 }
 
 
 /* Restart network manager if stopped */
-static void netwCheck(char c, char *netwstart, char *manag)
+static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
 {
     if (c == 'Y') {
+		fprintf(stdout, "\nRestoring permanent MAC of interface \"%s\"...\n", stdwlan);
+		macchanger(stdwlan, FALSE);
 		fprintf(stdout, "\nRestarting \"%s\"...\n", manag);
-      system(netwstart);
-      fprintf(stdout, "\n");
+		system(netwstart);
+		fprintf(stdout, "\n");
     }
 }
 
 
 /* Check wheter to clean-exit when given "-1" string */
-static int checkExit(char c, char *string, char *stopmon, char *pidpath, char *netwstart, char *manag)
+static int checkExit(char c, char *string, char *stopmon, char *pidpath, char *netwstart, char *netwstop, char *stdwlan, char *manag)
 {
     if (!strcmp(string, "-1")) {
-        netwCheck(c, netwstart, manag);
-        stopMonitor(stopmon, pidpath);
         fprintf(stdout, "Exiting...\n");
+        stopMonitor(stopmon, pidpath);
+        netwCheck(c, netwstart, stdwlan, manag);
+		free(stdwlan); free(netwstart); free(netwstop);
+		fprintf(stdout, "\nTerminated.\n\n");
         exit(EXIT_FAILURE);
     }
     return (EXIT_SUCCESS);

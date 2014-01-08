@@ -1,12 +1,10 @@
 Aircrack-CLI - Command Line Interface
 =====================================
 
-Version beta-04 (2014-01-07)
+Version beta-05 (2014-01-08)
 
     TODO:
-    ===
-    - multiple stop/start network-manager
-    - real list for MACs (and proper deletions)
+   - pid stop/start network-manager
 
 
     BUGS:

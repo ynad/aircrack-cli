@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [beta-04, 2014-01-07]
+  Revision    [beta-05, 2014-01-08]
 
 ******************************************************************************/
 
@@ -23,8 +23,8 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "beta-04"
-#define BUILD "2014-01-07"
+#define VERS "beta-05"
+#define BUILD "2014-01-08"
 
 #define BUFF 255
 #define MACLST 100
@@ -46,7 +46,7 @@ FILE *pidOpen(char *, char *);
 int checkMac(char *);
 
 /* MAC address modifier */
-void macchanger(char*);
+void macchanger(char *, int);
 
 /* Memory release */
 void freeMem(maclist_t *);
