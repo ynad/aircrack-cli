@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-05, 2014-01-08]
+  Revision    [1.1.5, 2014-01-18]
 
 ******************************************************************************/
 
@@ -43,6 +43,10 @@
 //URL to repo and file containing version info
 #define REPO "github.com/ynad/aircrack-cli/"
 #define URLVERS "https://raw.github.com/ynad/aircrack-cli/master/VERSION"
+
+//Local functions prototypes
+static maclist_t *getList(maclist_t *);
+static int check_wireless(const char *, char *);
 
 //error variable
 //extern int errno;
@@ -302,7 +306,7 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 
 
 /* Acquisition of MAC list */
-maclist_t *getList(maclist_t *maclst)
+static maclist_t *getList(maclist_t *maclst)
 {
 	char mac[BUFF];
 
@@ -503,6 +507,33 @@ int checkVersion()
 }
 
 
+/* Check existance of monitor interface */
+int checkMon(char *mon)
+{
+	char *iface, *token;
+	int flag;
+
+	flag = 1;
+	if ((iface = strdup(findWiface(FALSE))) == NULL)
+		fprintf(stderr, "Error: can't determine network intefaces.\n");
+	else {
+		token=strtok(iface, " ");
+        while (token && flag) {
+			if (strcmp(token, mon) == 0)
+				flag = 0;
+            token=strtok(NULL, " ");
+        }
+		if (token == NULL && flag) {
+			fprintf(stderr, "Error: wireless interface \"%s\" not found, no such device.\n", mon);
+			free(iface); free(token);
+			return (EXIT_FAILURE);
+		}
+	}
+	free(iface); free(token);
+	return (EXIT_SUCCESS);
+}
+
+
 /* Replace old with new in string str */
 char *replace_str(const char *str, const char *old, const char *new)
 {
@@ -581,7 +612,7 @@ char *findWiface(int flag)
 
 
 /* Check if is wireless or not */
-int check_wireless(const char *ifname, char *protocol)
+static int check_wireless(const char *ifname, char *protocol)
 {
 	int sock = -1;
 	struct iwreq pwrq;

@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-05, 2014-01-07]
+  Revision    [1.1.5, 2014-01-18]
 
 ******************************************************************************/
 
@@ -33,11 +33,12 @@
 //Library functions header
 #include "lib.h"
 
-//Prototypes
+#define MAXTHREAD 1024
+
+//Local functions prototypes
 static void *jammer();
 static void sigHandler(int);
 static void printSyntax(char *);
-static int checkMon(char *);
 
 //error variable
 //xextern int errno;
@@ -96,8 +97,11 @@ int main (int argc, char *argv[])
 			return (EXIT_FAILURE);
 		}
 		//creation of threads
-		fprintf(stdout, "\tStarting %d deauths:\n", dim);
-		for (i=0; i<dim; i++) {
+  		if (dim <= MAXTHREAD)
+			fprintf(stdout, "\tStarting %d deauths:\n", dim);
+		else
+			fprintf(stdout, "\tStarting %d (max. allowed) deauths out of %d requested:\n", MAXTHREAD, dim);
+		for (i=0; i<dim && i<MAXTHREAD; i++) {
 			ris = pthread_create(&tid, NULL, jammer, (void *) getMac(maclst, i));
 			if (ris) {
 				fprintf(stderr, "Error creating thread %d (%d): %s\n", i, ris, strerror(errno));
@@ -127,6 +131,8 @@ static void *jammer(void *mac)
 	}
 	system(death);
 
+	if (mac == NULL)
+		return NULL;
 	pthread_exit(NULL);
 }
 
@@ -135,9 +141,9 @@ static void *jammer(void *mac)
 static void sigHandler(int sig)
 {
 	if (sig == SIGINT)
-		fprintf(stderr, "\tReceived signal SIGINT (%d): exiting.\n", sig);
+		fprintf(stderr, "\nReceived signal SIGINT (%d): exiting.\n", sig);
 	else
-		fprintf(stderr, "\tReceived signal %d: exiting.\n", sig);
+		fprintf(stderr, "\nReceived signal %d: exiting.\n", sig);
 
 	//free and exit
 	freeMem(maclst);
@@ -150,32 +156,5 @@ static void printSyntax(char *name)
 {
 	fprintf(stderr, "Argument error. Syntax:\n   %s [BSSID] [MONITOR-IF] <MAC-LIST-FILE>\n", name);
 	fprintf(stderr, "\t[BSSID]\t\t  identifier of network target\n\t[MONITOR-IF]\t  wireless interface in monitor mode\n\t<MAC-LIST-FILE>\t  if omitted starts broadcast jammer\n");
-}
-
-
-/* Check existance of monitor interface */
-static int checkMon(char *mon)
-{
-	char *iface, *token;
-	int flag;
-
-	flag = 1;
-	if ((iface = strdup(findWiface(FALSE))) == NULL)
-		fprintf(stderr, "Error: can't determine network intefaces.\n");
-	else {
-		token=strtok(iface, " ");
-        while (token && flag) {
-			if (strcmp(token, mon) == 0)
-				flag = 0;
-            token=strtok(NULL, " ");
-        }
-		if (token == NULL && flag) {
-			fprintf(stderr, "Error: wireless interface \"%s\" not found, no such device.\n", mon);
-			free(iface); free(token);
-			return (EXIT_FAILURE);
-		}
-	}
-	free(iface); free(token);
-	return (EXIT_SUCCESS);
 }
 

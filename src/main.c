@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-05, 2014-01-08]
+  Revision    [1.1.5, 2014-01-18]
 
 ******************************************************************************/
 
@@ -28,6 +28,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 
 //Library functions header
 #include "lib.h"
@@ -38,7 +39,7 @@
 #define CLEAR "clear"
 
 
-//Prototypes
+//Local functions prototypes
 static void printHeader();
 static int argCheck(int, char **, char, char *, char *);
 static void printSyntax(char *, char, char *);
@@ -49,6 +50,7 @@ static void stopMonitor(char*, char*);
 static char netwPrompt(char *, char *, char *, char *);
 static void netwCheck(char, char *, char *, char *);
 static int checkExit(char c, char *, char *, char *, char *, char *, char *, char *);
+static void sigHandler(int);
 
 //error variable
 //extern int errno;
@@ -69,6 +71,9 @@ int main(int argc, char *argv[])
 
 
 	/** INITIAL STAGE **/
+
+	//set signal handler for SIGINT (Ctrl-C)
+	signal(SIGINT, sigHandler);
 
     //print initial message
     printHeader();
@@ -103,6 +108,10 @@ int main(int argc, char *argv[])
     fpid = pidOpen(inmon, pidpath);
 	if (fpid != NULL)
 		fclose(fpid);
+
+	//check monitor, if not found exit
+	if (checkMon(inmon) == EXIT_FAILURE)
+		checkExit(c, "-1", NULL, pidpath, netwstart, netwstop, stdwlan, manag);
 
     //monitor MAC changer (use macchanger)
 	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
@@ -139,6 +148,10 @@ int main(int argc, char *argv[])
     fprintf(stdout, "\n === Start monitor interface ===\n");
     strcat(startmon, can);
     system(startmon);
+
+	//check monitor, if not found exit
+	if (checkMon(inmon) == EXIT_FAILURE)
+		checkExit(c, "-1", NULL, pidpath, netwstart, netwstop, stdwlan, manag);
 
     //monitor MAC changer (use macchanger)
 	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
@@ -282,7 +295,7 @@ static void printMenu(char *argv0, char *bssid, char *inmon, maclist_t *maclst)
 		    case 2:
 				jammer(argv0, bssid, inmon, maclst, 1);
 				break;
-		case 3:
+		    case 3:
 			    jammer(argv0, bssid, inmon, maclst, 2);
 			    break;
             case 0:
@@ -334,18 +347,6 @@ static int jammer(char *argv0, char *bssid, char *inmon, maclist_t *maclst, int 
 }
 
 
-/* Stops monitor interface and removes PID file */
-static void stopMonitor(char *stopmon, char *pidpath)
-{
-    char clean[25]={"rm -f "};
-
-    system(stopmon);
-    //remove PID file
-    strcat(clean, pidpath);
-    system(clean);
-}
-
-
 /* Prompt whether to stop network manager */
 static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *manag)
 {
@@ -379,6 +380,19 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 }
 
 
+/* Stops monitor interface and removes PID file */
+static void stopMonitor(char *stopmon, char *pidpath)
+{
+    char clean[25]={"rm -f "};
+
+	if (stopmon != NULL)
+		system(stopmon);
+    //remove PID file
+    strcat(clean, pidpath);
+    system(clean);
+}
+
+
 /* Restart network manager if stopped */
 static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
 {
@@ -397,12 +411,25 @@ static int checkExit(char c, char *string, char *stopmon, char *pidpath, char *n
 {
     if (!strcmp(string, "-1")) {
         fprintf(stdout, "Exiting...\n");
-        stopMonitor(stopmon, pidpath);
+		stopMonitor(stopmon, pidpath);
         netwCheck(c, netwstart, stdwlan, manag);
 		free(stdwlan); free(netwstart); free(netwstop);
 		fprintf(stdout, "\nTerminated.\n\n");
         exit(EXIT_FAILURE);
     }
     return (EXIT_SUCCESS);
+}
+
+
+/* Signal handler */
+static void sigHandler(int sig)
+{
+	if (sig == SIGINT)
+		fprintf(stderr, "\nReceived signal SIGINT (%d): exiting.\n", sig);
+	else
+		fprintf(stderr, "\nReceived signal %d: exiting.\n", sig);
+
+	//exit
+	exit(EXIT_FAILURE);
 }
 

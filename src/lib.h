@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [beta-05, 2014-01-08]
+  Revision    [1.1.5, 2014-01-18]
 
 ******************************************************************************/
 
@@ -23,8 +23,8 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "beta-05"
-#define BUILD "2014-01-08"
+#define VERS "1.1.5"
+#define BUILD "2014-01-18"
 
 #define BUFF 255
 #define MACLST 100
@@ -54,9 +54,6 @@ void freeMem(maclist_t *);
 /* Deauthenticate list of clients */
 maclist_t *deauthClient(char *, char *, maclist_t *);
 
-/* Acquisition of MAC list */
-maclist_t *getList(maclist_t *);
-
 /* Print maclist to specified file */
 int fprintMaclist(maclist_t *, char *);
 
@@ -75,14 +72,14 @@ int procNumb();
 /* Check current version with info on online repo */
 int checkVersion();
 
+/* Check existance of monitor interface */
+int checkMon(char *);
+
 /* Replace old with new in string str */
 char *replace_str(const char *, const char *, const char *);
 
 /* Search network interfaces and chek if are wireless */
 char *findWiface(int);
-
-/* Check if is wireless or not */
-int check_wireless(const char *, char *);
 
 
 #endif // LIB_H_INCLUDED

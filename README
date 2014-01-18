@@ -3,21 +3,14 @@ Aircrack-CLI - Command Line Interface
 
 Version:
 --------
-beta-05 (2014-01-08)
+1.1.5 (2014-01-18)
 
     TODO:
     - pid stop/start network-manager
-    - readme intro
-    - online version check aircrack-ng
 
 
     BUGS:
     
-
-
-Author:
--------
-ynad (github.com/ynad/aircrack-cli)
 
 
 Description:
@@ -26,10 +19,10 @@ Description:
 Basic simplified command line interface for Aircrack-ng	(credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>).
 Official documentation and tutorials of Aircrack-ng can be found on http://www.aircrack-ng.org, see also manpages and the forum.
 
-List of capabilities:
+List of features:
   - start/stop monitor interfaces (promiscuous mode) on selected wireless interface and transmission channels (use of "airmon-ng")
   - capture of WPA/WPA2 handshakes of the selected Access Point (use of "airodump-ng")
-  - start single or multiple deauthentications on provided clients, forcing them to reauthenticate, to capture WPA/WPA2 handshakes (use of "aireplay-ng")
+  - start single or multiple deauthentications on provided clients forcing them to reauthenticate, to capture WPA/WPA2 handshakes (use of "aireplay-ng")
   - Jammer (AirJammer): jamming on chosen AP sending disassociate packets to list of clients or in broadcast mode, optimized for multi-thread execution. Useful to capture WPA/WPA2 handshakes or jam a wireless network
   - install requested system dependencies to run this program and Aircrack-ng suite
   - download, compile and install Aircrack-ng source code from official website
@@ -37,4 +30,23 @@ List of capabilities:
   - automatic recognition of: OS, network manager in use and wireless interface to use
   - start/stop network manager if requested by user, to avoid conflicts with monitor interfaces
   - online version checks
-  
+
+
+Installation:
+-------------
+  - Compile:
+      `make`
+
+  - Compile and install:
+      `make install`
+
+  - Remove only objects:
+      `make clean`
+
+  - Uninstall:
+      `make uninstall
+
+
+Author:
+-------
+ynad (github.com/ynad/aircrack-cli)

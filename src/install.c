@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [beta-05, 2014-01-06]
+  Revision    [1.1.5, 2014-01-12]
 
 ******************************************************************************/
 
@@ -41,18 +41,14 @@
 
 #define TMPDIR "/tmp/ngtmp/"
 #define AIRNAME "aircrack-ng-1.2-beta2.tar.gz"
+#define AIRCODE "1.2-beta2"
+#define AIRVERS "https://raw.github.com/aircrack-ng/aircrack-ng/master/VERSION"
 #define DISTRO "/proc/version"
 #define UBUNTU "Ubuntu"
 #define DEBIAN "Debian"
 #define FEDORA "fedora"
 #define SUSE "SUSE"
 #define ARCH "ARCH"
-
-/*
-    NOTE:
-        - supported only OS debian-based and RedHad-based (YUM/rpm) [Fedora, (Open)SUSE]
-
-*/
 
 //error variable
 //extern int errno;
@@ -146,8 +142,9 @@ char checkDistro()
 int akngInstall()
 {
     int go=TRUE;
-    char c='0', cgdir[BUFF], command[BUFF]={"wget http://download.aircrack-ng.org/"};
+    char c='0', cgdir[BUFF], vers[BUFF], command[BUFF]={"wget http://download.aircrack-ng.org/"};
     DIR *dp;
+	FILE *fp;
     struct dirent *dirp;
     struct stat statbuf;
 
@@ -166,10 +163,34 @@ int akngInstall()
         fprintf(stderr, "Error moving to directory \"%s\": %s.\n", TMPDIR, strerror(errno));
         return (EXIT_FAILURE);
     }
-    
+
     fprintf(stdout, "\n\tDownloading and extracting source code...\n\n");
 
-    sprintf(command, "%s%s && tar -zxvf %s 1> tar.log", command, AIRNAME, AIRNAME);
+	//version check - errors muted
+	sprintf(vers, "wget %s -O /tmp/AIRVERSION -q", AIRVERS);
+	system(vers);
+	if ((fp = fopen("/tmp/AIRVERSION", "r")) != NULL) {
+		//fprintf(stderr, "Error reading from file \"%s\": %s\n", "/tmp/AIRVERSION", strerror(errno));
+		if (fscanf(fp, "%s", vers) != 1);
+			//fprintf(stderr, "No data collected or no internet connection.\n\n");
+		else {
+			if (strcmp(vers, AIRCODE) > 0) {
+				fprintf(stdout, "\nA newer version of \"Aircrack-ng\" is available (%s), do you want to use it? (default is %s)  [Y-N]\n", vers, AIRCODE);
+				do {
+					scanf("%c%*c", &c);
+					c = toupper(c);
+				} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
+			}
+		}
+	}
+	fclose(fp);
+	system("rm -f /tmp/AIRVERSION");
+
+	//download chosen version
+	if (c == 'Y')
+		sprintf(command, "%saircrack-ng-%s.tar.gz && tar -zxvf aircrack-ng-%s.tar.gz 1> tar.log", command, vers, vers);
+	else
+		sprintf(command, "%s%s && tar -zxvf %s 1> tar.log", command, AIRNAME, AIRNAME);
     system(command);
 
     fprintf(stdout, "\nConfirm installation?  [Y-N]\n");
@@ -219,7 +240,7 @@ int akngInstall()
     system(command);
 
     if (go == TRUE) {
-        fprintf(stdout, "\n INSTALLATION ABORTED!\n\n");
+        fprintf(stdout, "\n INSTALLATION ABORTED!\n");
         return (EXIT_FAILURE);
     }
     fprintf(stdout, "\n INSTALLATION COMPLETED!\n\n");
