@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [1.1.5, 2014-01-18]
+  Revision    [1.1.7, 2014-01-19]
 
 ******************************************************************************/
 
@@ -23,8 +23,8 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "1.1.5"
-#define BUILD "2014-01-18"
+#define VERS "1.1.7"
+#define BUILD "2014-01-19"
 
 #define BUFF 255
 #define MACLST 100

@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [1.1.5, 2014-01-18]
+  Revision    [1.1.7, 2014-01-19]
 
 ******************************************************************************/
 
@@ -313,6 +313,9 @@ static int jammer(char *argv0, char *bssid, char *inmon, maclist_t *maclst, int 
 	char cmd[BUFF], path[BUFF], argvz[BUFF], list[]={"/tmp/maclist.txt"};
 	int i, stop=0;
 
+	//clear error value
+	errno = 0;
+
 	if (flag == 1) {
 		if (maclst == NULL) {
 			fprintf(stdout, "\nError: MAC list is still empty!\n");
@@ -324,7 +327,7 @@ static int jammer(char *argv0, char *bssid, char *inmon, maclist_t *maclst, int 
 	}
 	
 	if (getcwd(path, BUFF) == NULL) {
-        fprintf(stderr, "\nError reading current path.\n");
+        fprintf(stderr, "\nError reading current path: %s\n", strerror(errno));
         return (EXIT_FAILURE);
     }
 	//use a copy of argv[0], to not modify it
@@ -351,6 +354,10 @@ static int jammer(char *argv0, char *bssid, char *inmon, maclist_t *maclst, int 
 static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *manag)
 {
 	char c, tmp[BUFF], newman[BUFF];
+	FILE *fp;
+
+	//clear error value
+	errno = 0;
 
     c = '0';
     //stop potentially unwanted processes
@@ -372,9 +379,17 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 	}
 	//in case of Y or E, stop network manager and change MAC of stdwlan
     if (c == 'Y') {
-        system(netwstop);
-		fprintf(stdout, "\nChanging MAC of interface \"%s\"...\n", stdwlan);
-		macchanger(stdwlan, TRUE);
+		if (access("/tmp/airnetw", F_OK) == 0)
+			fprintf(stdout, "\"%s\" is already stopped.\n", manag);
+		else {
+			system(netwstop);
+			if ((fp = fopen("/tmp/airnetw", "w")) == NULL)
+				fprintf(stderr, "Unable to write %s ID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", manag, "/tmp/airnetw", strerror(errno));
+			else
+				fclose(fp);
+			fprintf(stdout, "\nChanging MAC of interface \"%s\"...\n", stdwlan);
+			macchanger(stdwlan, TRUE);
+		}
 	}
 	return c;
 }
@@ -396,11 +411,27 @@ static void stopMonitor(char *stopmon, char *pidpath)
 /* Restart network manager if stopped */
 static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
 {
+	char pidpath[20]={"/tmp/aircli-pid-0"};
+	int i, flag;
+
     if (c == 'Y') {
+		if (access("/tmp/airnetw", F_OK) == 0) {
+			flag = FALSE;
+			for (i=0; i<10 && flag == FALSE; i++) {
+				pidpath[strlen(pidpath)-1] = '0'+i;
+				if (access(pidpath, F_OK) == 0)
+					flag = TRUE;
+			}
+			if (flag == TRUE) {
+				fprintf(stdout, "\nOther sessions of Aircrack-CLI running, restart of \"%s\" skipped.\n\n", manag);
+				return;
+			}
+		}
 		fprintf(stdout, "\nRestoring permanent MAC of interface \"%s\"...\n", stdwlan);
 		macchanger(stdwlan, FALSE);
 		fprintf(stdout, "\nRestarting \"%s\"...\n", manag);
 		system(netwstart);
+		system("rm -f /tmp/airnetw");
 		fprintf(stdout, "\n");
     }
 }

@@ -3,11 +3,10 @@ Aircrack-CLI - Command Line Interface
 
 Version:
 --------
-1.1.5 (2014-01-18)
+1.1.7 (2014-01-19)
 
     TODO:
-    - pid stop/start network-manager
-
+    
 
     BUGS:
     
