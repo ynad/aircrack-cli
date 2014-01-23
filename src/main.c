@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-19]
+  Revision    [2014-01-23]
 
 ******************************************************************************/
 
@@ -37,6 +37,8 @@
 
 //Module defines
 #define CLEAR "clear"
+#define MON "mon0"
+#define PIDPTH "/tmp/aircli-pid-0"
 
 
 //Local functions prototypes
@@ -46,10 +48,10 @@ static void printSyntax(char *, char, char *);
 static void installer();
 static void printMenu(char *, char *, char *, maclist_t *);
 static int jammer(char *, char *, char *, maclist_t *, int);
-static void stopMonitor(char*, char*);
 static char netwPrompt(char *, char *, char *, char *);
 static void netwCheck(char, char *, char *, char *);
 static int checkExit(char c, char *, char *, char *, char *, char *, char *, char *);
+static void stopMonitor(char*, char*);
 static void sigHandler(int);
 
 //error variable
@@ -64,7 +66,7 @@ int main(int argc, char *argv[])
 	maclist_t *maclst=NULL;
 
     //program strings
-    char c, id, can[5], bssid[20], fout[BUFF], manag[BUFF], inmon[10]={"mon0"}, pidpath[20]={"/tmp/aircli-pid-0"}, *stdwlan=NULL, *netwstart=NULL, *netwstop=NULL,
+    char c, id, can[5], bssid[20], fout[BUFF], manag[BUFF], inmon[10]={MON}, pidpath[20]={PIDPTH}, *stdwlan=NULL, *netwstart=NULL, *netwstop=NULL,
          startmon[30]={"airmon-ng start"}, stopmon[30]={"airmon-ng stop "},
          montmp[BUFF]={"xterm 2> /dev/null -T MonitorTemp -e airodump-ng --encrypt wpa"},
 		 scanmon[BUFF*2]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
@@ -104,7 +106,7 @@ int main(int argc, char *argv[])
     fprintf(stdout, "\n\n === Start temporary monitor interface ===\n");
     system(startmon);
 
-    //PID file handling
+    //PID file handling and set inmon
     fpid = pidOpen(inmon, pidpath);
 	if (fpid != NULL)
 		fclose(fpid);
@@ -138,8 +140,8 @@ int main(int argc, char *argv[])
 	} while (strcmp(bssid, "-1") && checkMac(bssid) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
     checkExit(c, bssid, stopmon, pidpath, netwstart, netwstop, stdwlan, manag);
 
-    //close scanner and monitor
-    system(stopmon);
+    //close monitor and remove PID
+	stopMonitor(stopmon, pidpath);
     sleep(1);
 
 
@@ -148,6 +150,15 @@ int main(int argc, char *argv[])
     fprintf(stdout, "\n === Start monitor interface ===\n");
     strcat(startmon, can);
     system(startmon);
+
+    //PID file handling and set inmon
+	inmon[strlen(inmon)-1] = '0';
+	pidpath[strlen(pidpath)-1] = '0';
+    fpid = pidOpen(inmon, pidpath);
+	if (fpid != NULL)
+		fclose(fpid);
+	//fix monitor number
+	stopmon[strlen(stopmon)-1] = inmon[strlen(inmon)-1];
 
 	//check monitor, if not found exit
 	if (checkMon(inmon) == EXIT_FAILURE)
@@ -379,19 +390,67 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 	}
 	//in case of Y or E, stop network manager and change MAC of stdwlan
     if (c == 'Y') {
-		if (access("/tmp/airnetw", F_OK) == 0)
+		if (access(AIRNETW, F_OK) == 0)
 			fprintf(stdout, "\"%s\" is already stopped.\n", manag);
 		else {
+			fprintf(stdout, "Stopping \"%s\"...\n", manag);
 			system(netwstop);
-			if ((fp = fopen("/tmp/airnetw", "w")) == NULL)
-				fprintf(stderr, "Unable to write %s ID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", manag, "/tmp/airnetw", strerror(errno));
-			else
+			if ((fp = fopen(AIRNETW, "w")) == NULL)
+				fprintf(stderr, "Unable to write %s ID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", manag, AIRNETW, strerror(errno));
+			else {
+				fprintf(fp, "%s\n", manag);
 				fclose(fp);
+			}
 			fprintf(stdout, "\nChanging MAC of interface \"%s\"...\n", stdwlan);
 			macchanger(stdwlan, TRUE);
 		}
 	}
 	return c;
+}
+
+
+/* Restart network manager if stopped */
+static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
+{
+	char pidpath[20]={PIDPTH};
+	int i, flag=TRUE;
+	FILE *fp;
+
+	//clear error value
+	errno = 0;
+
+	//check for program ID files
+	if (access(AIRNETW, F_OK) == 0) {
+		flag = FALSE;
+		for (i=0; i<10 && flag == FALSE; i++) {
+			pidpath[strlen(pidpath)-1] = '0'+i;
+			if (access(pidpath, F_OK) == 0)
+				flag = TRUE;
+		}
+		//if at least one is found
+		if (flag == TRUE) {
+			fprintf(stdout, "\nOther sessions of Aircrack-CLI running, restart of \"%s\" skipped.\n\n", manag);
+			return;
+		}
+		//compare network manager name from arguments to the one written to file
+		if ((fp = fopen(AIRNETW, "r")) == NULL)
+			fprintf(stderr, "Unable to open %s ID file \"%s\": %s\n", manag, AIRNETW, strerror(errno));
+		else {
+			if (fscanf(fp, "%s", pidpath) == 1)
+				if (strcmp(manag, pidpath) != 0)
+					strcpy(manag, pidpath);
+			fclose(fp);
+		}
+	}
+    if (c == 'Y' || flag == FALSE) {
+		fprintf(stdout, "\nRestoring permanent MAC of interface \"%s\"...\n", stdwlan);
+		macchanger(stdwlan, FALSE);
+		fprintf(stdout, "\nRestarting \"%s\"...\n", manag);
+		system(netwstart);
+		sprintf(pidpath, "rm -f %s", AIRNETW);
+		system(pidpath);
+		fprintf(stdout, "\n");
+	}
 }
 
 
@@ -405,35 +464,6 @@ static void stopMonitor(char *stopmon, char *pidpath)
     //remove PID file
     strcat(clean, pidpath);
     system(clean);
-}
-
-
-/* Restart network manager if stopped */
-static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
-{
-	char pidpath[20]={"/tmp/aircli-pid-0"};
-	int i, flag;
-
-    if (c == 'Y') {
-		if (access("/tmp/airnetw", F_OK) == 0) {
-			flag = FALSE;
-			for (i=0; i<10 && flag == FALSE; i++) {
-				pidpath[strlen(pidpath)-1] = '0'+i;
-				if (access(pidpath, F_OK) == 0)
-					flag = TRUE;
-			}
-			if (flag == TRUE) {
-				fprintf(stdout, "\nOther sessions of Aircrack-CLI running, restart of \"%s\" skipped.\n\n", manag);
-				return;
-			}
-		}
-		fprintf(stdout, "\nRestoring permanent MAC of interface \"%s\"...\n", stdwlan);
-		macchanger(stdwlan, FALSE);
-		fprintf(stdout, "\nRestarting \"%s\"...\n", manag);
-		system(netwstart);
-		system("rm -f /tmp/airnetw");
-		fprintf(stdout, "\n");
-    }
 }
 
 

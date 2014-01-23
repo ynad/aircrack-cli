@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [2014-01-19]
+  Revision    [2014-01-23]
 
 ******************************************************************************/
 
@@ -23,14 +23,15 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "1.1.7"
-#define BUILD "2014-01-19"
+#define VERS "1.1.8"
+#define BUILD "2014-01-23"
 
 #define BUFF 255
 #define MACLST 100
 #define MACLEN 17
 #define FALSE 0
 #define TRUE 1
+#define AIRNETW "/tmp/airnetw"
 
 //Type declaration
 typedef struct maclist maclist_t;

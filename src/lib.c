@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-19]
+  Revision    [2014-01-23]
 
 ******************************************************************************/
 
@@ -62,14 +62,19 @@ struct maclist {
 char setDistro(char **stdwlan, char **netwstart, char **netwstop, char *manag)
 {
 	char id, tmp[BUFF];
+	FILE *fp;
 
 	//clear error value
 	errno = 0;	
 
 	id = checkDistro();
 
-	//set network-manager
-    if (access("/usr/sbin/NetworkManager", F_OK) == 0) {
+	//set network manager
+	if (access(AIRNETW, F_OK) == 0 && (fp = fopen(AIRNETW, "r")) != NULL) {
+		fscanf(fp, "%s", manag);
+		fclose(fp);
+	}
+    else if (access("/usr/sbin/NetworkManager", F_OK) == 0) {
 		if (id == 'y' || id == 'a')
 			strcpy(manag, "NetworkManager");
 		else
@@ -525,11 +530,11 @@ int checkMon(char *mon)
         }
 		if (token == NULL && flag) {
 			fprintf(stderr, "Error: wireless interface \"%s\" not found, no such device.\n", mon);
-			free(iface); free(token);
+			free(iface);
 			return (EXIT_FAILURE);
 		}
 	}
-	free(iface); free(token);
+	free(iface);
 	return (EXIT_SUCCESS);
 }
 
@@ -607,6 +612,7 @@ char *findWiface(int flag)
 		} 
 	}
 	freeifaddrs(ifaddr);
+	res[strlen(res)-1] = '\0';
 	return res;
 }
 

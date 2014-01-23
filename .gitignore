@@ -25,3 +25,4 @@ obj
 *.c~
 *.h~
 test.txt
+crash.log
