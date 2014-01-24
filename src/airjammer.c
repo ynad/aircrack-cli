@@ -39,8 +39,8 @@
 
 //Local functions prototypes
 static void *jammer();
-static void sigHandler(int);
 static void printSyntax(char *);
+static void sigHandler(int);
 
 //error variable
 //xextern int errno;
@@ -139,6 +139,14 @@ static void *jammer(void *mac)
 }
 
 
+/* Prints program syntax */
+static void printSyntax(char *name)
+{
+	fprintf(stderr, "Argument error. Syntax:\n   %s [BSSID] [MONITOR-IF] <MAC-LIST-FILE>\n", name);
+	fprintf(stderr, "\t[BSSID]\t\t  identifier of network target\n\t[MONITOR-IF]\t  wireless interface in monitor mode\n\t<MAC-LIST-FILE>\t  if omitted starts broadcast jammer\n");
+}
+
+
 /* Signal handler */
 static void sigHandler(int sig)
 {
@@ -150,13 +158,5 @@ static void sigHandler(int sig)
 	//free and exit
 	freeMem(maclst);
 	exit(EXIT_FAILURE);
-}
-
-
-/* Prints program syntax */
-static void printSyntax(char *name)
-{
-	fprintf(stderr, "Argument error. Syntax:\n   %s [BSSID] [MONITOR-IF] <MAC-LIST-FILE>\n", name);
-	fprintf(stderr, "\t[BSSID]\t\t  identifier of network target\n\t[MONITOR-IF]\t  wireless interface in monitor mode\n\t<MAC-LIST-FILE>\t  if omitted starts broadcast jammer\n");
 }
 

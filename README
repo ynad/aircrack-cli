@@ -3,13 +3,13 @@ Aircrack-CLI - Command Line Interface
 
 Version:
 --------
-1.1.8 (2014-01-23)
+1.1.8 (2014-01-24)
 
     TODO:
     
 
     BUGS:
-	
+    
 
 
 Description:
@@ -22,7 +22,7 @@ List of features:
   - start/stop monitor interfaces (promiscuous mode) on selected wireless interface and transmission channels (use of "airmon-ng")
   - capture of WPA/WPA2 handshakes of the selected Access Point (use of "airodump-ng")
   - start single or multiple deauthentications on provided clients forcing them to reauthenticate, to capture WPA/WPA2 handshakes (use of "aireplay-ng")
-  - Jammer (AirJammer): jamming on chosen AP sending disassociate packets to list of clients or in broadcast mode, optimized for multi-thread execution. Useful to capture WPA/WPA2 handshakes or jam a wireless network
+  - Wifi Jammer (AirJammer): jamming on chosen wireless network sending disassociate packets to list of clients or in broadcast mode, optimized for multi-thread execution. Useful to capture WPA/WPA2 handshakes or jam a wireless network
   - install requested system dependencies to run this program and Aircrack-ng suite
   - download, compile and install Aircrack-ng source code from official website
   - capable to run multiple instances of Aircrack-cli and all subsequent operations
