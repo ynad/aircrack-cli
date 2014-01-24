@@ -1,19 +1,19 @@
 /**CFile***********************************************************************
 
-  FileName    [main.c]
+   FileName    [main.c]
 
-  PackageName [Aircrack-CLI]
+   PackageName [Aircrack-CLI]
 
-  Synopsis    [Aircrack Command Line Interface - Main module]
+   Synopsis    [Aircrack Command Line Interface - Main module]
 
-  Description [Command Line Interface for Aircrack-ng 
-  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+   Description [Command Line Interface for Aircrack-ng 
+   (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
 
-  Author      [ynad]
+   Author      [ynad]
 
-  License     [GPLv2, see LICENSE.md]
+   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-23]
+   Revision    [2014-01-23]
 
 ******************************************************************************/
 
@@ -66,10 +66,10 @@ int main(int argc, char *argv[])
 	maclist_t *maclst=NULL;
 
     //program strings
-    char c, id, can[5], bssid[20], fout[BUFF], manag[BUFF], inmon[10]={MON}, pidpath[20]={PIDPTH}, *stdwlan=NULL, *netwstart=NULL, *netwstop=NULL,
-         startmon[30]={"airmon-ng start"}, stopmon[30]={"airmon-ng stop "},
-         montmp[BUFF]={"xterm 2> /dev/null -T MonitorTemp -e airodump-ng --encrypt wpa"},
-		 scanmon[BUFF*2]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
+    char c, id, can[5], bssid[20], fout[BUFF], manag[BUFF], inmon[10]={MON}, pidpath[20]={PIDPTH}, *stdwlan=NULL, *netwstart=NULL, *netwstop=NULL;
+    char startmon[30]={"airmon-ng start"}, stopmon[30]={"airmon-ng stop "};
+	char montmp[BUFF]={"xterm 2> /dev/null -T MonitorTemp -e airodump-ng --encrypt wpa"};
+	char scanmon[BUFF*2]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
 
 
 	/** INITIAL STAGE **/
@@ -300,19 +300,19 @@ static void printMenu(char *argv0, char *bssid, char *inmon, maclist_t *maclst)
         fprintf(stdout, "\n\nChoose an action:\n=================\n\t1. De-authenticate client(s)\n\t2. Jammer (MAC list)\n\t3. Jammer (broadcast)\n\t0. Stop scanner\n");
         fscanf(stdin, "%d", &opz);
         switch (opz) {
-            case 1:
-				maclst = deauthClient(bssid, inmon, maclst);
-                break;
-		    case 2:
-				jammer(argv0, bssid, inmon, maclst, 1);
-				break;
-		    case 3:
-			    jammer(argv0, bssid, inmon, maclst, 2);
-			    break;
-            case 0:
-                break;
-            default:
-                fprintf(stdout, "\nError: unexpected option!\n");
+		case 1:
+			maclst = deauthClient(bssid, inmon, maclst);
+			break;
+		case 2:
+			jammer(argv0, bssid, inmon, maclst, 1);
+			break;
+		case 3:
+			jammer(argv0, bssid, inmon, maclst, 2);
+			break;
+		case 0:
+			break;
+		default:
+			fprintf(stdout, "\nError: unexpected option!\n");
         }
     } while (opz != 0);
 }

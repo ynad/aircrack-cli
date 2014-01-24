@@ -6,14 +6,16 @@
 
   Synopsis    [Aircrack Command Line Interface - AirJammer]
 
-  Description [Command Line Interface for Aircrack-ng 
-  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+  Description [Wifi jammer on chosen wireless network: sends disassociate 
+  packets to list of clients or in broadcast mode, optimized for 
+  multi-thread execution. 
+  Useful to capture WPA/WPA2 handshakes or jam a wireless network]
 
   Author      [ynad]
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-18]
+  Revision    [2014-01-24]
 
 ******************************************************************************/
 
@@ -57,17 +59,17 @@ int main (int argc, char *argv[])
 	//set signal handler for SIGINT (Ctrl-C)
 	signal(SIGINT, sigHandler);
 
-	//syntax
-	if (argc < 3) {
-		printSyntax(argv[0]);
-		return (EXIT_FAILURE);
-	}
-
 	//check execution permissions
     if (getgid() != 0) {
         fprintf(stderr, "Run it as root!\n");
 		return (EXIT_FAILURE);
     }
+
+	//syntax
+	if (argc < 3) {
+		printSyntax(argv[0]);
+		return (EXIT_FAILURE);
+	}
 	//check BSSID
 	if (checkMac(argv[1]) == FALSE) {
 		fprintf(stderr, "Error: wrong format for BSSID (%s).\n", argv[1]);

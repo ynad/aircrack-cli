@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-23]
+  Revision    [2014-01-24]
 
 ******************************************************************************/
 
@@ -74,15 +74,16 @@ char setDistro(char **stdwlan, char **netwstart, char **netwstop, char *manag)
 		fscanf(fp, "%s", manag);
 		fclose(fp);
 	}
+	//Wicd
+	else if (access("/usr/bin/wicd", F_OK) == 0)
+		strcpy(manag, "wicd");
+	//network-manager
     else if (access("/usr/sbin/NetworkManager", F_OK) == 0) {
 		if (id == 'y' || id == 'a')
 			strcpy(manag, "NetworkManager");
 		else
 			strcpy(manag, "network-manager");
 	}
-	//Wicd
-	else if (access("/usr/bin/wicd", F_OK) == 0)
-		strcpy(manag, "wicd");
 	//default
 	else
 		strcpy(manag, "network-manager");
