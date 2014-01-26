@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-24]
+  Revision    [2014-01-27]
 
 ******************************************************************************/
 
@@ -59,9 +59,9 @@ struct maclist {
 
 
 /* Set environment variables and strings depending on OS type */
-char setDistro(char **stdwlan, char **netwstart, char **netwstop, char *manag)
+char setDistro(char *stdwlan, char *netwstart, char *netwstop, char *manag)
 {
-	char id, tmp[BUFF];
+	char id, *tmp;
 	FILE *fp;
 
 	//clear error value
@@ -74,9 +74,6 @@ char setDistro(char **stdwlan, char **netwstart, char **netwstop, char *manag)
 		fscanf(fp, "%s", manag);
 		fclose(fp);
 	}
-	//Wicd
-	else if (access("/usr/bin/wicd", F_OK) == 0)
-		strcpy(manag, "wicd");
 	//network-manager
     else if (access("/usr/sbin/NetworkManager", F_OK) == 0) {
 		if (id == 'y' || id == 'a')
@@ -84,68 +81,38 @@ char setDistro(char **stdwlan, char **netwstart, char **netwstop, char *manag)
 		else
 			strcpy(manag, "network-manager");
 	}
+	//Wicd
+	else if (access("/usr/bin/wicd", F_OK) == 0)
+		strcpy(manag, "wicd");
 	//default
 	else
 		strcpy(manag, "network-manager");
 
 	//set system service controller
 	if (access("/usr/bin/systemctl", F_OK) == 0) {
-		sprintf(tmp, "systemctl start %s.service", manag);
-		*netwstart = strdup(tmp);
-		sprintf(tmp, "systemctl stop %s.service", manag);
-		*netwstop = strdup(tmp);
-		if (*netwstart == NULL || *netwstop == NULL) {
-			fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
-			free(*netwstart); free(*netwstop);
-			return '0';
-		}
+		sprintf(netwstart, "systemctl start %s.service", manag);
+		sprintf(netwstop, "systemctl stop %s.service", manag);
 	}
 	else if (access("/usr/bin/service", F_OK) == 0) {
-		sprintf(tmp, "service %s start", manag);
-		*netwstart = strdup(tmp);
-		sprintf(tmp, "service %s stop", manag);
-		*netwstop = strdup(tmp);
-		if (*netwstart == NULL || *netwstop == NULL) {
-			fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
-			free(*netwstart); free(*netwstop);
-			return '0';
-		}
+		sprintf(netwstart, "service %s start", manag);
+		sprintf(netwstop, "service %s stop", manag);
 	}
 
 	//set network wireless interface name, if automatic search fails use distro dependant settings
-	*stdwlan = findWiface(TRUE);
-	if (*stdwlan != NULL && strlen(*stdwlan) > 0) {
-		sprintf(tmp, " %s ", *stdwlan);
-		*stdwlan = strdup(tmp);
-	}
+	tmp = findWiface(TRUE);
+	if (tmp != NULL && strlen(tmp) > 0)
+		sprintf(stdwlan, " %s ", tmp);
 	else {
 		//Debian-based
-		if (id == 'u') {
-			*stdwlan = strdup(" wlan0 ");
-			if (*stdwlan == NULL) {
-				fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
-				free(*netwstart); free(*netwstop);
-				return '0';
-			}
-		}
+		if (id == 'u')
+			strcpy(stdwlan, " wlan0 ");
 		//Redhat-based
-		else if (id == 'y' || id == 'a') {
-			*stdwlan = strdup(" wlp2s0 ");
-			if (*stdwlan == NULL) {
-				fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
-				free(*netwstart); free(*netwstop);
-				return '0';
-			}
-		}
+		else if (id == 'y' || id == 'a')
+			strcpy(stdwlan, " wlp2s0 ");
 		//Default for unknown distribution
 		else if (id == '0') {
 			fprintf(stdout, "Warning: there may be misbehavior!\n");
-			*stdwlan = strdup(" wlan0 ");
-			if (*stdwlan == NULL) {
-				fprintf(stderr, "\nError allocating string(s): %s\n", strerror(errno));
-				free(*netwstart); free(*netwstop);
-				return '0';
-			}
+			strcpy(stdwlan, " wlan0 ");
 		}
 	}
 	return id;

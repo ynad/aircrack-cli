@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-01-23]
+   Revision    [2014-01-27]
 
 ******************************************************************************/
 
@@ -66,10 +66,10 @@ int main(int argc, char *argv[])
 	maclist_t *maclst=NULL;
 
     //program strings
-    char c, id, can[5], bssid[20], fout[BUFF], manag[BUFF], inmon[10]={MON}, pidpath[20]={PIDPTH}, *stdwlan=NULL, *netwstart=NULL, *netwstop=NULL;
-    char startmon[30]={"airmon-ng start"}, stopmon[30]={"airmon-ng stop "};
+    char c, id, can[BUFF], bssid[BUFF], fout[BUFF], manag[BUFF], inmon[BUFF]={MON}, pidpath[BUFF]={PIDPTH}, stdwlan[BUFF], netwstart[BUFF], netwstop[BUFF];
+    char startmon[BUFF]={"airmon-ng start"}, stopmon[BUFF]={"airmon-ng stop "};
 	char montmp[BUFF]={"xterm 2> /dev/null -T MonitorTemp -e airodump-ng --encrypt wpa"};
-	char scanmon[BUFF*2]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
+	char scanmon[BUFF]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
 
 
 	/** INITIAL STAGE **/
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     printHeader();
 
 	//set environment variables and strings depending on OS type
-	id = setDistro(&stdwlan, &netwstart, &netwstop, manag);
+	id = setDistro(stdwlan, netwstart, netwstop, manag);
 
 	//check arguments and set stuff
 	inst = argCheck(argc, argv, id, startmon, stdwlan);
@@ -89,7 +89,6 @@ int main(int argc, char *argv[])
     //check execution rights
     if (getgid() != 0) {
         fprintf(stdout, "Run the program with administrator rights!\n\n");
-		free(stdwlan); free(netwstart); free(netwstop);
 		return (EXIT_FAILURE);
     }
 
@@ -113,7 +112,7 @@ int main(int argc, char *argv[])
 
 	//check monitor, if not found exit
 	if (checkMon(inmon) == EXIT_FAILURE)
-		checkExit(c, "-1", NULL, pidpath, netwstart, netwstop, stdwlan, manag);
+		checkExit(c, "0", NULL, pidpath, netwstart, netwstop, stdwlan, manag);
 
     //monitor MAC changer (use macchanger)
 	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
@@ -127,17 +126,17 @@ int main(int argc, char *argv[])
     system(montmp);
 
     //data acquisition
-    fprintf(stdout, "\nChannel number (-1 to clean-exit):\t");
+    fprintf(stdout, "\nChannel number (0 to clean-exit):\t");
 	do {
 		fscanf(stdin, "%s", can);
 		sscanf(can, "%d", &opz);
-	} while ((opz < 1 || opz > 14) && opz != -1 && fprintf(stdout, "Allowed only channels in range [1-14]:\t"));
+	} while ((opz < 1 || opz > 14) && opz != 0 && fprintf(stdout, "Allowed only channels in range [1-14]:\t"));
     checkExit(c, can, stopmon, pidpath, netwstart, netwstop, stdwlan, manag);
 
-    fprintf(stdout, "\nTarget BSSID (-1 to clean-exit):\t");
+    fprintf(stdout, "\nTarget BSSID (0 to clean-exit):\t\t");
 	do {
 		fscanf(stdin, "%s", bssid);
-	} while (strcmp(bssid, "-1") && checkMac(bssid) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
+	} while (strcmp(bssid, "0") && checkMac(bssid) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
     checkExit(c, bssid, stopmon, pidpath, netwstart, netwstop, stdwlan, manag);
 
     //close monitor and remove PID
@@ -162,14 +161,14 @@ int main(int argc, char *argv[])
 
 	//check monitor, if not found exit
 	if (checkMon(inmon) == EXIT_FAILURE)
-		checkExit(c, "-1", NULL, pidpath, netwstart, netwstop, stdwlan, manag);
+		checkExit(c, "0", NULL, pidpath, netwstart, netwstop, stdwlan, manag);
 
     //monitor MAC changer (use macchanger)
 	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
     macchanger(inmon, TRUE);
 
     //output file
-    fprintf(stdout, "\nOutput file (-1 to clean-exit):\t");
+    fprintf(stdout, "\nOutput file (0 to clean-exit):\t");
 	getchar();
 	fgets(fout, BUFF, stdin);
 	fout[strlen(fout)-1] = '\0';
@@ -189,7 +188,6 @@ int main(int argc, char *argv[])
     //close monitor, network manager check and memory free
     stopMonitor(stopmon, pidpath);
     netwCheck(c, netwstart, stdwlan, manag);
-	free(stdwlan); free(netwstart); free(netwstop);
 	freeMem(maclst);
 
     //greetings
@@ -364,7 +362,7 @@ static int jammer(char *argv0, char *bssid, char *inmon, maclist_t *maclst, int 
 /* Prompt whether to stop network manager */
 static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *manag)
 {
-	char c, tmp[BUFF], newman[BUFF];
+	char c, tmp[BUFF], newman[BUFF], *ptr;
 	FILE *fp;
 
 	//clear error value
@@ -383,8 +381,10 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 		fprintf(stdout, "Input new manager name:\t");
 		fgets(tmp, BUFF, stdin);
 		sscanf(tmp, "%s", newman);
-		strcpy(netwstart, replace_str(netwstart, manag, newman));
-		strcpy(netwstop, replace_str(netwstop, manag, newman));
+	    ptr = replace_str(netwstart, manag, newman);
+		strcpy(netwstart, ptr);
+		ptr = replace_str(netwstop, manag, newman);
+		strcpy(netwstop, ptr);
 		strcpy(manag, newman);
 		c = 'Y';
 	}
@@ -470,11 +470,10 @@ static void stopMonitor(char *stopmon, char *pidpath)
 /* Check wheter to clean-exit when given "-1" string */
 static int checkExit(char c, char *string, char *stopmon, char *pidpath, char *netwstart, char *netwstop, char *stdwlan, char *manag)
 {
-    if (!strcmp(string, "-1")) {
+    if (!strcmp(string, "0")) {
         fprintf(stdout, "Exiting...\n");
 		stopMonitor(stopmon, pidpath);
         netwCheck(c, netwstart, stdwlan, manag);
-		free(stdwlan); free(netwstart); free(netwstop);
 		fprintf(stdout, "\nTerminated.\n\n");
         exit(EXIT_FAILURE);
     }

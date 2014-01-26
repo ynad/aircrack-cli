@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [2014-01-24]
+  Revision    [2014-01-27]
 
 ******************************************************************************/
 
@@ -24,9 +24,9 @@
 
 //Version code - keep UPDATED!
 #define VERS "1.1.8"
-#define BUILD "2014-01-24"
+#define BUILD "2014-01-27"
 
-#define BUFF 255
+#define BUFF 256
 #define MACLST 100
 #define MACLEN 17
 #define FALSE 0
@@ -38,7 +38,7 @@ typedef struct maclist maclist_t;
 
 
 /* Set environment variables and strings depending on OS type */
-char setDistro(char **, char **, char **, char *);
+char setDistro(char *, char *, char *, char *);
 
 /* PID files handling */
 FILE *pidOpen(char *, char *);
