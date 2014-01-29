@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-01-27]
+   Revision    [2014-01-29]
 
 ******************************************************************************/
 
@@ -299,12 +299,15 @@ static void printMenu(char *argv0, char *bssid, char *inmon, maclist_t *maclst)
         fscanf(stdin, "%d", &opz);
         switch (opz) {
 		case 1:
+			fprintf(stdout, "De-auth client(s)...\n");
 			maclst = deauthClient(bssid, inmon, maclst);
 			break;
 		case 2:
+			fprintf(stdout, "Jammer (list mode)...\n");
 			jammer(argv0, bssid, inmon, maclst, 1);
 			break;
 		case 3:
+			fprintf(stdout, "Jammer (broadcast mode)...\n");
 			jammer(argv0, bssid, inmon, maclst, 2);
 			break;
 		case 0:
@@ -393,8 +396,11 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 		if (access(AIRNETW, F_OK) == 0)
 			fprintf(stdout, "\"%s\" is already stopped.\n", manag);
 		else {
-			fprintf(stdout, "Stopping \"%s\"...\n", manag);
-			system(netwstop);
+			//if manag is "null" just change MAC
+			if (strcmp(manag, "null") != 0) {
+				fprintf(stdout, "Stopping \"%s\"...\n", manag);
+				system(netwstop);	
+			}
 			if ((fp = fopen(AIRNETW, "w")) == NULL)
 				fprintf(stderr, "Unable to write %s ID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", manag, AIRNETW, strerror(errno));
 			else {
@@ -445,8 +451,15 @@ static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
     if (c == 'Y' || flag == FALSE) {
 		fprintf(stdout, "\nRestoring permanent MAC of interface \"%s\"...\n", stdwlan);
 		macchanger(stdwlan, FALSE);
-		fprintf(stdout, "\nRestarting \"%s\"...\n", manag);
-		system(netwstart);
+		//if manag is "null" restore interface without restarting any service
+		if (strcmp(manag, "null") == 0) {
+			sprintf(pidpath, "ifconfig %s up", stdwlan);
+			system(pidpath);
+		}
+		else {
+			fprintf(stdout, "\nRestarting \"%s\"...\n", manag);
+			system(netwstart);
+		}
 		sprintf(pidpath, "rm -f %s", AIRNETW);
 		system(pidpath);
 		fprintf(stdout, "\n");
