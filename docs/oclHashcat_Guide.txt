@@ -1,0 +1,36 @@
+==============
+= oclHashcat =
+==============
+Tool for bruteforce using GPU(s)
+
+
+Installation
+------------
+Download compressed archive from:
+http://hashcat.net/oclhashcat/
+
+Nothing to install or compile:
+- for NVIDIA GPUs:
+    Run "cudaHashcat32.bin" or "cudaHashcat64.bin" depending on your platform.
+    On Windows, use same files with ".exe" extension.
+
+- for AMD/ATI GPUs:
+    Run "oclHashcat32.bin" o "oclHashcat32.bin" depending on your platform.
+    On Windows, use same files with ".exe" extension.
+
+
+Usage
+-----
+To use with packets captured by Aircrack-ng, first you need to convert your ".cap" file:
+$ aircrack-ng foo.cap -J foo
+the resulting file will have ".hccap" extension.
+
+Now to start cracking a WPA/WPA2 handshake (specified with "-m 2500" option):
+$ ./cudaHashcat64.bin -m 2500 foo.hccap dictionary.txt
+
+There are tons of attack modes and supported algorithms (see ./cudaHashcat-plus64.bin --help).
+
+
+--
+Source:
+http://www.phillips321.co.uk/2012/03/24/cracking-wpa-4way-handshakes-with-your-gpu/
