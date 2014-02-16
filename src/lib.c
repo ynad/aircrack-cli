@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-27]
+  Revision    [2014-02-16]
 
 ******************************************************************************/
 
@@ -120,7 +120,7 @@ char setDistro(char *stdwlan, char *netwstart, char *netwstop, char *manag)
 
 
 /* PID files handling */
-FILE *pidOpen(char *inmon, char *pidpath)
+void pidOpen(char *inmon, char *pidpath, char *stdwlan)
 {
     FILE *fpid;
 
@@ -132,9 +132,11 @@ FILE *pidOpen(char *inmon, char *pidpath)
     inmon[strlen(inmon)-1] = pidpath[strlen(pidpath)-1];    //setting monitor interface number
 
     if ((fpid = fopen(pidpath, "w")) == NULL)
-        fprintf(stderr, "Unable to write PID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", pidpath, strerror(errno));
-
-    return fpid;
+        fprintf(stderr, "Warning: Unable to write PID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", pidpath, strerror(errno));
+	else {
+		fprintf(fpid, "%s\n", stdwlan);
+		fclose(fpid);
+	}
 }
 
 
@@ -146,6 +148,12 @@ int checkMac(char *mac)
 	//address of wrong lenght
 	if ((len = strlen(mac)) != MACLEN)
 		return FALSE;
+
+	//check last bit of first octet, must be even
+	if (isdigit(mac[1]) && (int)mac[1] % 2)
+		return FALSE;
+	else if ((int)mac[1] % 2 == 0)
+			return FALSE;
 
 	//scan char by char to check for hexadecimal values and ':' separators
 	for (i=0; i<len; i++) {
@@ -164,22 +172,22 @@ int checkMac(char *mac)
 /* MAC address modifier */
 void macchanger(char *inmon, int flag)
 {
-    char ifcnf[23], macchg[25];
+    char tmp[25];
 
     //shutting down interface
-    sprintf(ifcnf, "ifconfig %s down", inmon);
-    system(ifcnf);
+    sprintf(tmp, "ifconfig %s down", inmon);
+    system(tmp);
 
     //changing MAC with a new one randomly generated or reset to permanent
 	if (flag == FALSE)
-		sprintf(macchg, "macchanger -p %s", inmon);
+		sprintf(tmp, "macchanger -p %s", inmon);
 	else
-		sprintf(macchg, "macchanger -a %s", inmon);
-    system(macchg);
+		sprintf(tmp, "macchanger -a %s", inmon);
+    system(tmp);
 
     //restarting interface
-    //sprintf(ifcnf, "ifconfig %s up", inmon);
-    //system(ifcnf);
+    //sprintf(tmp, "ifconfig %s up", inmon);
+    //system(tmp);
 }
 
 
@@ -278,6 +286,49 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 }
 
 
+/* Execute fake authentication for WEP networks */
+void fakeAuth(char *bssid, char *mon, char *mac, int mode)
+{
+	char cmd[BUFF];
+
+	//simple fake auth
+	if (mode == 1) {
+		sprintf(cmd, "aireplay-ng -1 0 -a %s -h %s %s --ignore-negative-one", bssid, mac, mon);
+	}
+	//fake auth with keep alive, for tricky AP
+	else if (mode == 2) {
+		sprintf(cmd, "xterm 2> /dev/null -T FakeAuth -e aireplay-ng -1 6000 -o 1 -q 10 -a %s -h %s %s --ignore-negative-one &", bssid, mac, mon);
+	}
+	system(cmd);
+}
+
+
+/* Launch ARP requests replay mode */
+void ARPreqReplay(char *bssid, char *mon, char *mac)
+{
+	char cmd[BUFF];
+
+	sprintf(cmd, "xterm 2> /dev/null -T ARPreqReplay -e aireplay-ng -3 -b %s -h %s %s --ignore-negative-one &", bssid, mac, mon);
+	system(cmd);
+}
+
+
+/* WPA/WEP crack - dual method */
+void packCrack(char *pack, char *dict, int mode)
+{
+	char cmd[BUFF];
+	if (mode == 1)
+		sprintf(cmd, "xterm 2> /dev/null -T WpaCrack -e \"aircrack-ng %s*.cap -w %s ; read\" &", pack, dict);
+	//PTW method
+	else if (mode == 2)
+		sprintf(cmd, "xterm 2> /dev/null -T WepCrack-PTW -e \"aircrack-ng %s*.cap ; read\" &", pack);
+	//FMS/Korek method
+	else if (mode == 3)
+		sprintf(cmd, "xterm 2> /dev/null -T WepCrack-FMS_Korek -e \"aircrack-ng -K %s*.cap ; read\" &", pack);
+	system(cmd);
+}
+
+
 /* Acquisition of MAC list */
 static maclist_t *getList(maclist_t *maclst)
 {
@@ -292,8 +343,8 @@ static maclist_t *getList(maclist_t *maclst)
 		return NULL;
 	}
 
-	fprintf(stdout, "\nInput one MAC address per line (-1 to stop):\n");
-	while (fprintf(stdout, " %d:\t", maclst->dim+1) && fscanf(stdin, "%s", mac) == 1 && strcmp(mac, "-1")) {
+	fprintf(stdout, "\nInput one MAC address per line (0 to stop):\n");
+	while (fprintf(stdout, " %d:\t", maclst->dim+1) && fscanf(stdin, "%s", mac) == 1 && strcmp(mac, "0")) {
 		if (checkMac(mac) == FALSE) {
 			fprintf(stderr, "Incorrect address or wrong format.\n");
 		}
@@ -504,6 +555,24 @@ int checkMon(char *mon)
 	}
 	free(iface);
 	return (EXIT_SUCCESS);
+}
+
+
+/* Check encryption type chosed */
+int checkEncr(char *str)
+{
+	int i;
+
+	for (i=0; i<strlen(str); i++)
+		str[i] = toupper(str[i]);
+	i = 0;
+	if (!strcmp(str, "WPA"))
+		i = WPA;
+	if (!strcmp(str, "WEP"))
+		i = WEP;
+	if (!strcmp(str, "OPN"))
+		i = OPN;
+	return i;
 }
 
 

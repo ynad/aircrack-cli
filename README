@@ -3,7 +3,8 @@ Aircrack-CLI - Command Line Interface
 
 Version:
 --------
-1.1.8 (2014-01-29)
+1.2.1 (2014-02-16)
+See ChangeLog for details. 
 
     TODO:
     
@@ -21,6 +22,7 @@ Official documentation and tutorials of Aircrack-ng can be found on http://www.a
 List of features:
   - start/stop monitor interfaces (promiscuous mode) on selected wireless interface and transmission channels (use of "airmon-ng")
   - capture of WPA/WPA2 handshakes of the selected Access Point (use of "airodump-ng")
+  - crack WEP keys: use fake authentications and ARP request replay to generate new unique IVs, then used to crack the WEP key
   - start single or multiple deauthentications on provided clients forcing them to reauthenticate, to capture WPA/WPA2 handshakes (use of "aireplay-ng")
   - Wifi Jammer (AirJammer): jamming on chosen wireless network sending disassociate packets to list of clients or in broadcast mode, optimized for multi-thread execution. Useful to capture WPA/WPA2 handshakes or jam a wireless network
   - install requested system dependencies to run this program and Aircrack-ng suite
@@ -43,7 +45,7 @@ Installation:
       `make clean`
 
   - Uninstall:
-      `make uninstall
+      `make uninstall`
 
 
 Author:

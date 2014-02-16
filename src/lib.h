@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [2014-01-29]
+  Revision    [2014-02-16]
 
 ******************************************************************************/
 
@@ -23,8 +23,8 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "1.1.8"
-#define BUILD "2014-01-29"
+#define VERS "1.2.1"
+#define BUILD "2014-02-16"
 
 #define BUFF 256
 #define MACLST 100
@@ -32,6 +32,9 @@
 #define FALSE 0
 #define TRUE 1
 #define AIRNETW "/tmp/airnetw"
+#define OPN 1
+#define WPA 1
+#define WEP 2
 
 //Type declaration
 typedef struct maclist maclist_t;
@@ -41,7 +44,7 @@ typedef struct maclist maclist_t;
 char setDistro(char *, char *, char *, char *);
 
 /* PID files handling */
-FILE *pidOpen(char *, char *);
+void pidOpen(char *, char *, char *);
 
 /* Check MAC address format */
 int checkMac(char *);
@@ -54,6 +57,15 @@ void freeMem(maclist_t *);
 
 /* Deauthenticate list of clients */
 maclist_t *deauthClient(char *, char *, maclist_t *);
+
+/* Execute fake authentication for WEP networks */
+void fakeAuth(char *, char *, char *, int);
+
+/* Launch ARP requests replay mode */
+void ARPreqReplay(char *, char *, char *);
+
+/* WEP crack - dual method */
+void packCrack(char *, char *, int);
 
 /* Print maclist to specified file */
 int fprintMaclist(maclist_t *, char *);
@@ -75,6 +87,9 @@ int checkVersion();
 
 /* Check existance of monitor interface */
 int checkMon(char *);
+
+/* Check encryption type chosed */
+int checkEncr(char *);
 
 /* Replace old with new in string str */
 char *replace_str(const char *, const char *, const char *);

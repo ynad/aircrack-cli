@@ -1,0 +1,15 @@
+Version 1.2.1 (changes from 1.1.8) - Released 16/02/2014:
+* Added support for WEP attack and cracking
+* Differentation on encryption type
+* Renamed main.c to aircrack-cli.c
+* Various bug fixes
+* air-cat.sh: WEP support
+* lib.c: Improved MAC address checker
+
+
+----------------------------------------------------------------------------------------------
+Older Changelog:
+
+N/A
+
+Initial development august/september 2013.
