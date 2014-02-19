@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-02-16]
+  Revision    [2014-02-17]
 
 ******************************************************************************/
 
@@ -150,10 +150,10 @@ int checkMac(char *mac)
 		return FALSE;
 
 	//check last bit of first octet, must be even
-	if (isdigit(mac[1]) && (int)mac[1] % 2)
+	if (isdigit(mac[1]) && mac[1] % 2)
 		return FALSE;
-	else if ((int)mac[1] % 2 == 0)
-			return FALSE;
+	else if (isalpha(mac[1]) && mac[1] % 2 == 0)
+		return FALSE;
 
 	//scan char by char to check for hexadecimal values and ':' separators
 	for (i=0; i<len; i++) {
