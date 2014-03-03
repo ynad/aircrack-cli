@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
 
-  Revision    [2014-02-16]
+  Revision    [2014-03-01]
 
 ******************************************************************************/
 
@@ -23,21 +23,21 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "1.2.1"
-#define BUILD "2014-02-16"
+#define VERS "1.2.2"
+#define BUILD "2014-03-01"
 
 #define BUFF 256
-#define MACLST 100
+#define MACLST 256
 #define MACLEN 17
 #define FALSE 0
 #define TRUE 1
 #define AIRNETW "/tmp/airnetw"
-#define OPN 1
 #define WPA 1
 #define WEP 2
+#define OPN 1
 
 //Type declaration
-typedef struct maclist maclist_t;
+typedef struct maclist *maclist_t;
 
 
 /* Set environment variables and strings depending on OS type */
@@ -53,33 +53,36 @@ int checkMac(char *);
 void macchanger(char *, int);
 
 /* Memory release */
-void freeMem(maclist_t *);
+void freeMem(maclist_t);
 
 /* Deauthenticate list of clients */
-maclist_t *deauthClient(char *, char *, maclist_t *);
+maclist_t deauthClient(char *, char *, maclist_t);
 
-/* Execute fake authentication for WEP networks */
+/* Execute fake authentication (WEP networks) */
 void fakeAuth(char *, char *, char *, int);
 
-/* Launch ARP requests replay mode */
+/* Launch ARP requests replay mode (WEP networks) */
 void ARPreqReplay(char *, char *, char *);
 
-/* WEP crack - dual method */
+/* Launch interactive packet replay (WEP networks) */
+void interReplay(char *, char *);
+
+/* WPA/WEP crack - dual method */
 void packCrack(char *, char *, int);
 
 /* Print maclist to specified file */
-int fprintMaclist(maclist_t *, char *);
+int fprintMaclist(maclist_t, char *);
 
 /* Read MAC addresses from supplied file */
-maclist_t *freadMaclist(char *);
+maclist_t freadMaclist(char *);
 
 /* Return single MAC address */
-char *getMac(maclist_t *, int);
+char *getMac(maclist_t, int);
 
 /* Return MAC list dimension */
-int getDim(maclist_t *);
+int getDim(maclist_t);
 
-/* Determines number of existing/configured CPUs */
+/* Determine number of existing/configured CPUs */
 int procNumb();
 
 /* Check current version with info on online repo */
@@ -99,3 +102,4 @@ char *findWiface(int);
 
 
 #endif // LIB_H_INCLUDED
+

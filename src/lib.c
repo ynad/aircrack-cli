@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-02-17]
+  Revision    [2014-03-01]
 
 ******************************************************************************/
 
@@ -45,7 +45,7 @@
 #define URLVERS "https://raw.github.com/ynad/aircrack-cli/master/VERSION"
 
 //Local functions prototypes
-static maclist_t *getList(maclist_t *);
+static maclist_t getList(maclist_t);
 static int check_wireless(const char *, char *);
 
 //error variable
@@ -55,6 +55,7 @@ static int check_wireless(const char *, char *);
 struct maclist {
 	char **macs;
 	int dim;
+	int max;
 };
 
 
@@ -71,7 +72,10 @@ char setDistro(char *stdwlan, char *netwstart, char *netwstop, char *manag)
 
 	//set network manager
 	if (access(AIRNETW, F_OK) == 0 && (fp = fopen(AIRNETW, "r")) != NULL) {
-		fscanf(fp, "%s", manag);
+		if (fscanf(fp, "%s", manag) != 1) {
+			fprintf(stderr, "Warning: empty or wrong file \"%s\".\n", AIRNETW);
+			strcpy(manag, "network-manager");
+		}
 		fclose(fp);
 	}
 	//network-manager
@@ -111,7 +115,7 @@ char setDistro(char *stdwlan, char *netwstart, char *netwstop, char *manag)
 			strcpy(stdwlan, " wlp2s0 ");
 		//Default for unknown distribution
 		else if (id == '0') {
-			fprintf(stdout, "Warning: there may be misbehavior!\n");
+			fprintf(stderr, "Warning: there may be misbehavior!\n");
 			strcpy(stdwlan, " wlan0 ");
 		}
 	}
@@ -192,7 +196,7 @@ void macchanger(char *inmon, int flag)
 
 
 /* Memory release */
-void freeMem(maclist_t *maclst)
+void freeMem(maclist_t maclst)
 {
 	int i;
 	if (maclst != NULL) {
@@ -205,14 +209,15 @@ void freeMem(maclist_t *maclst)
 
 
 /* Deauthenticate list of clients */
-maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
+maclist_t deauthClient(char *bssid, char *inmon, maclist_t maclst)
 {
+	//--deauth or -0, send deauthentication packets
 	char death[]={"aireplay-ng --deauth 1 -a"}, cmd[BUFF];
 	int i;
 
 	//if empty list, malloc and acquisition (standard dimension in MACLST)
 	if (maclst == NULL) {
-		maclst = (maclist_t *)malloc(sizeof(maclist_t));
+		maclst = (maclist_t)malloc(sizeof(struct maclist));
 		if (maclst == NULL) {
 			fprintf(stderr, "Error allocating MAC struct.\n");
 			return NULL;
@@ -224,12 +229,11 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 			return NULL;
 		}
 		maclst->dim = 0;
+		maclst->max = MACLST;
 		maclst = getList(maclst);
 		//returns NULL if realloc fails
-		if (maclst == NULL) {
-			free(maclst);
+		if (maclst == NULL)
 			return NULL;
-		}
 		//if dim=0: error in first allocation or acquisition aborted
 		if (maclst->dim == 0) {
 			free(maclst);
@@ -237,44 +241,53 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 			return NULL;
 		}
 	}
-	else {
-		printf("\nCurrent content MAC list:\n");
-		for (i=0; i<maclst->dim; i++) {
-			fprintf(stdout, "\t(%d) %s", i+1, maclst->macs[i]);
-			if (i%2 == 0 && i != 0)
-				printf("\n");
-		}
-		fprintf(stdout, "\n");	
-		fprintf(stdout, "Choose an option:\n\t1. Run deauthentication\n\t2. Add MAC addresses\n\t3. Remove MAC address\n");
-		scanf("%d", &i);
-		switch (i) {
-		    case 1:
-				break;
-			//Add MACs
-		    case 2:
-			   maclst = getList(maclst);
-			   //returns NULL if realloc fails
-			   if (maclst == NULL) {
-		   			free(maclst);
-				   return NULL;
-			   }
-			   break;
-		   //Remove MAC (simplified)
-		   case 3:
-			   fprintf(stdout, "\nInput index you want to remove:\t");
-			   scanf("%d", &i);
-			   if (--i >= 0 && i < maclst->dim) {
-				   free(maclst->macs[i]);
-				   maclst->macs[i] = NULL;
-			   }
-			   else
-				   fprintf(stdout, "Invalid index.\n");
-			   break;
-		   default:			
-			   fprintf(stdout, "\nError: wrong option! Using actual list.\n");
-		}	   
+
+	fprintf(stdout, "\nCurrent content MAC list:\n");
+	for (i=0; i<maclst->dim; i++) {
+		fprintf(stdout, "\t(%3d) %17s  ", i+1, maclst->macs[i]);
+		if ((i+1)%3 == 0)
+			fprintf(stdout, "\n");
 	}
-	printf("\n");
+	fprintf(stdout, "\n");	
+	fprintf(stdout, "Choose an option:\n\t1. Run deauthentication\n\t2. Add MAC addresses\n\t3. Remove MAC address\n\t0. Cancel\n");
+	do
+		fgets(cmd, BUFF-1, stdin);
+	while (sscanf(cmd, "%d", &i) != 1 && fprintf(stdout, "Type only integers\n"));
+
+	switch (i) {
+	    case 1:
+			break;
+		//Add MACs
+	    case 2:
+			maclst = getList(maclst);
+			//returns NULL if realloc fails
+			if (maclst == NULL) {
+				free(maclst);
+				return NULL;
+			}
+			break;
+		//Remove MAC (simplified)
+	    case 3:
+			fprintf(stdout, "\nInput index you want to remove:\t");
+			do
+				fgets(cmd, BUFF-1, stdin);
+			while (sscanf(cmd, "%d", &i) != 1 && fprintf(stdout, "Type only integers\n"));
+			if (--i >= 0 && i < maclst->dim) {
+				free(maclst->macs[i]);
+				maclst->macs[i] = NULL;
+			}
+			else
+				fprintf(stdout, "Invalid index.\n");
+			return maclst;
+			break;
+	    case 0:
+			return maclst;
+			break;
+	    default:			
+			fprintf(stderr, "\nError: wrong option!\n");
+			return maclst;
+	}
+	fprintf(stdout, "\n");
 	for (i=0; i<maclst->dim; i++) {
 		if (maclst->macs[i] != NULL) {
 			sprintf(cmd, "%s %s -c %s %s --ignore-negative-one", death, bssid, maclst->macs[i], inmon);
@@ -286,53 +299,11 @@ maclist_t *deauthClient(char *bssid, char *inmon, maclist_t *maclst)
 }
 
 
-/* Execute fake authentication for WEP networks */
-void fakeAuth(char *bssid, char *mon, char *mac, int mode)
-{
-	char cmd[BUFF];
-
-	//simple fake auth
-	if (mode == 1) {
-		sprintf(cmd, "aireplay-ng -1 0 -a %s -h %s %s --ignore-negative-one", bssid, mac, mon);
-	}
-	//fake auth with keep alive, for tricky AP
-	else if (mode == 2) {
-		sprintf(cmd, "xterm 2> /dev/null -T FakeAuth -e aireplay-ng -1 6000 -o 1 -q 10 -a %s -h %s %s --ignore-negative-one &", bssid, mac, mon);
-	}
-	system(cmd);
-}
-
-
-/* Launch ARP requests replay mode */
-void ARPreqReplay(char *bssid, char *mon, char *mac)
-{
-	char cmd[BUFF];
-
-	sprintf(cmd, "xterm 2> /dev/null -T ARPreqReplay -e aireplay-ng -3 -b %s -h %s %s --ignore-negative-one &", bssid, mac, mon);
-	system(cmd);
-}
-
-
-/* WPA/WEP crack - dual method */
-void packCrack(char *pack, char *dict, int mode)
-{
-	char cmd[BUFF];
-	if (mode == 1)
-		sprintf(cmd, "xterm 2> /dev/null -T WpaCrack -e \"aircrack-ng %s*.cap -w %s ; read\" &", pack, dict);
-	//PTW method
-	else if (mode == 2)
-		sprintf(cmd, "xterm 2> /dev/null -T WepCrack-PTW -e \"aircrack-ng %s*.cap ; read\" &", pack);
-	//FMS/Korek method
-	else if (mode == 3)
-		sprintf(cmd, "xterm 2> /dev/null -T WepCrack-FMS_Korek -e \"aircrack-ng -K %s*.cap ; read\" &", pack);
-	system(cmd);
-}
-
-
 /* Acquisition of MAC list */
-static maclist_t *getList(maclist_t *maclst)
+static maclist_t getList(maclist_t maclst)
 {
-	char mac[BUFF];
+	char mac[BUFF], buff[BUFF];
+	int opz;
 
 	//clear error value
 	errno = 0;
@@ -342,13 +313,42 @@ static maclist_t *getList(maclist_t *maclst)
 		fprintf(stderr, "\nError: MAC list not initialized yet!\n");
 		return NULL;
 	}
+	//if list is empty (first execution) ask for input method
+	if (maclst->dim == 0) {
+		fprintf(stdout, "\nChoose input method:\n\t1. Manual input from keyboard\n\t2. Input from file\n\t0. Cancel\n");
+		do
+			fgets(buff, BUFF-1, stdin);
+		while (sscanf(buff, "%d", &opz) != 1 && fprintf(stdout, "Type only integers\n"));
+		//read from file
+		if (opz == 2) {
+			fprintf(stdout, "\nInput path to file (0 to cancel):\t");
+			fgets(buff, BUFF-1, stdin);
+			if (buff[strlen(buff)-1] == '\n')
+				buff[strlen(buff)-1] = '\0';
+			if (!strcmp(buff, "0"))
+				return maclst;
+			return freadMaclist(buff);
+		}
+		else if (opz == 0)
+			return maclst;
+	}
 
 	fprintf(stdout, "\nInput one MAC address per line (0 to stop):\n");
-	while (fprintf(stdout, " %d:\t", maclst->dim+1) && fscanf(stdin, "%s", mac) == 1 && strcmp(mac, "0")) {
+		while (fprintf(stdout, " %d:\t", maclst->dim+1) && fgets(buff, BUFF-1, stdin) != NULL && sscanf(buff, "%s", mac) == 1 && strcmp(mac, "0")) {
 		if (checkMac(mac) == FALSE) {
 			fprintf(stderr, "Incorrect address or wrong format.\n");
 		}
 		else {
+			//check if list (array as this case) is full, if so realloc
+			if (maclst->dim >= maclst->max) {
+				maclst->macs = (char **)realloc(maclst->macs, (maclst->max + MACLST) * sizeof(char *));
+				if (maclst->macs == NULL) {
+					fprintf(stderr, "\nError reallocating MAC list (dim. %d): %s.\n\n", MACLST*2, strerror(errno));
+					maclst->dim = 0;
+					return NULL;
+				}
+				maclst->max = maclst->max + MACLST;
+			}
 			maclst->macs[maclst->dim] = strdup(mac);
 			if (maclst->macs[maclst->dim] == NULL) {
 				fprintf(stderr, "\nError allocating MAC address (pos. %d): %s.\n\n", maclst->dim, strerror(errno));
@@ -356,23 +356,72 @@ static maclist_t *getList(maclist_t *maclst)
 			}
 			//number of collected addresses
 			maclst->dim++;
-			//check if list (array as this case) is full, if so realloc
-			if (maclst->dim == MACLST) {
-				maclst->macs = (char **)realloc(maclst->macs, MACLST*2 * sizeof(char *));
-				if (maclst->macs == NULL) {
-					fprintf(stderr, "\nError reallocating MAC list (dim. %d): %s.\n\n", MACLST*2, strerror(errno));
-					maclst->dim = 0;
-					return NULL;
-				}
-			}
 		}
 	}
 	return maclst;
 }
 
 
+/* Execute fake authentication (WEP networks) */
+void fakeAuth(char *bssid, char *mon, char *mac, int mode)
+{
+	//--fakeauth or -1, fake authentication
+	char cmd[BUFF];
+
+	//simple fake auth
+	if (mode == 1) {
+		sprintf(cmd, "aireplay-ng -1 0 -a %s -h %s %s --ignore-negative-one", bssid, mac, mon);
+	}
+	//fake auth with keep alive, for tricky AP
+	else if (mode == 2) {
+		sprintf(cmd, "xterm 2> /dev/null -T FakeAuth -e \"aireplay-ng -1 6000 -o 1 -q 10 -a %s -h %s %s --ignore-negative-one\" &", bssid, mac, mon);
+	}
+	system(cmd);
+}
+
+
+/* Launch ARP requests replay mode (WEP networks) */
+void ARPreqReplay(char *bssid, char *mon, char *mac)
+{
+	//--arpreplay or -3, ARP request replay
+	char cmd[BUFF];
+
+	sprintf(cmd, "xterm 2> /dev/null -T ARPreqReplay -e \"aireplay-ng -3 -b %s -h %s %s --ignore-negative-one\" &", bssid, mac, mon);
+	system(cmd);
+}
+
+
+/* Launch interactive packet replay (WEP networks) */
+void interReplay(char *bssid, char *mon)
+{
+	//--interactive or -2, interactive packet replay
+	char cmd[BUFF];
+
+	sprintf(cmd, "xterm 2> /dev/null -T InteractivePacketReplay -e \"aireplay-ng -2 -b %s -t 1 -c FF:FF:FF:FF:FF:FF -p 0841 %s --ignore-negative-one\" &", bssid, mon);
+	system(cmd);
+}
+
+
+/* WPA/WEP crack - dual method */
+void packCrack(char *pack, char *dict, int mode)
+{
+	char cmd[BUFF];
+
+	//WPA
+	if (mode == 1)
+		sprintf(cmd, "xterm 2> /dev/null -T WpaCrack -e \"aircrack-ng %s*.cap -w %s ; read\" &", pack, dict);
+	//WEP - PTW method
+	else if (mode == 2)
+		sprintf(cmd, "xterm 2> /dev/null -T WepCrack-PTW -e \"aircrack-ng %s*.cap ; read\" &", pack);
+	//WEP - FMS/Korek method
+	else if (mode == 3)
+		sprintf(cmd, "xterm 2> /dev/null -T WepCrack-FMS_Korek -e \"aircrack-ng -K %s*.cap ; read\" &", pack);
+	system(cmd);
+}
+
+
 /* Print maclist to specified file */
-int fprintMaclist(maclist_t *maclst, char *file)
+int fprintMaclist(maclist_t maclst, char *file)
 {
 	FILE *fp;
 	int i;
@@ -395,12 +444,12 @@ int fprintMaclist(maclist_t *maclst, char *file)
 
 
 /* Read MAC addresses from supplied file */
-maclist_t *freadMaclist(char *source)
+maclist_t freadMaclist(char *source)
 {
 	FILE *fp;
-	char cmd[BUFF];
+	char cmd[BUFF], mac[BUFF];
 	int i, dim;
-	maclist_t *maclst;
+	maclist_t maclst;
 
 	//clear error value
 	errno = 0;
@@ -412,30 +461,33 @@ maclist_t *freadMaclist(char *source)
 	}
 	//checking list lenght
 	dim = 0;
-	while (fgets(cmd, BUFF, fp) != NULL)
+	while (fgets(cmd, BUFF-1, fp) != NULL)
 		dim++;
 	rewind(fp);
 
-	maclst = (maclist_t *)malloc(sizeof(maclist_t));
+	maclst = (maclist_t)malloc(sizeof(struct maclist));
 	if (maclst == NULL) {
-		printf("Error allocating MAC struct.\n");
+		fprintf(stderr, "Error allocating MAC struct.\n");
 		return NULL;
 	}
 	maclst->dim = 0;
-	if ((maclst->macs = (char **)malloc(dim * sizeof(char *))) == NULL) {
-		fprintf(stderr, "Error allocating MAC list (dim. %d): %s.\n", dim, strerror(errno));
+	maclst->max = dim + MACLST;
+	if ((maclst->macs = (char **)malloc(maclst->max * sizeof(char *))) == NULL) {
+		fprintf(stderr, "Error allocating MAC list (dim. %d): %s.\n", maclst->max, strerror(errno));
 		free(maclst);
 		return NULL;
 	}
 	//reading file
 	for (i=0; i<dim; i++) {
-		fscanf(fp, "%s", cmd);
+		//skip empty or wrong lines
+		if (fgets(cmd, BUFF-1, fp) == NULL);
+		else if (sscanf(cmd, "%s", mac) != 1);
 		//check correct format before adding to list
-		if (checkMac(cmd) == FALSE) {
-			fprintf(stderr, "Incorrect address or wrong format: \"%s\"\n", cmd);
+		else if (checkMac(mac) == FALSE) {
+			fprintf(stderr, "Incorrect address or wrong format: \"%s\"\n", mac);
 		}
 		else {
-			maclst->macs[maclst->dim] = strdup(cmd);
+			maclst->macs[maclst->dim] = strdup(mac);
 			if (maclst->macs[maclst->dim] == NULL) {
 				fprintf(stderr, "Error allocating MAC address (pos. %d): %s.\n", maclst->dim, strerror(errno));
 				freeMem(maclst);
@@ -449,14 +501,14 @@ maclist_t *freadMaclist(char *source)
 
 
 /* Return single MAC address */
-char *getMac(maclist_t *maclst, int i)
+char *getMac(maclist_t maclst, int i)
 {
 	return (maclst->macs[i]);
 }
 
 
 /* Return MAC list dimension */
-int getDim(maclist_t *maclst)
+int getDim(maclist_t maclst)
 {
 	return (maclst->dim);
 }

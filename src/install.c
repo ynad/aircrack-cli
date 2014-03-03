@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-12]
+  Revision    [2014-02-23]
 
 ******************************************************************************/
 
@@ -57,7 +57,7 @@
 /* Dependencies installer */
 int depInstall()
 {
-    char c='0', id='0';
+    char c='0', id='0', buff[BUFF];
 
     fprintf(stdout, "\nThe following dependencies are requested:\n"
             "\t* build-essential\n"
@@ -73,9 +73,10 @@ int depInstall()
 		return (EXIT_FAILURE);
 
 	do {
-		scanf("%c%*c", &c);
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%c", &c);
 		c = toupper(c);
-	} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
+	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
     if (c == 'Y') {
         fprintf(stdout, "\nInstalling dependencies...\n\n");
 		//Ubuntu
@@ -115,7 +116,7 @@ char checkDistro()
 		return id;
 	}
 
-    if (fgets(name, BUFF, fp) == NULL) {
+    if (fgets(name, BUFF-1, fp) == NULL) {
 		fprintf(stderr, "File \"%s\" corrupted!\n", DISTRO);
 		return id;
 	}
@@ -142,7 +143,7 @@ char checkDistro()
 int akngInstall()
 {
     int go=TRUE;
-    char c='0', cgdir[BUFF], vers[BUFF], command[BUFF]={"wget http://download.aircrack-ng.org/"};
+    char c='0', buff[BUFF], cgdir[BUFF], vers[BUFF], command[BUFF]={"wget http://download.aircrack-ng.org/"};
     DIR *dp;
 	FILE *fp;
     struct dirent *dirp;
@@ -170,20 +171,22 @@ int akngInstall()
 	sprintf(vers, "wget %s -O /tmp/AIRVERSION -q", AIRVERS);
 	system(vers);
 	if ((fp = fopen("/tmp/AIRVERSION", "r")) != NULL) {
-		//fprintf(stderr, "Error reading from file \"%s\": %s\n", "/tmp/AIRVERSION", strerror(errno));
 		if (fscanf(fp, "%s", vers) != 1);
 			//fprintf(stderr, "No data collected or no internet connection.\n\n");
 		else {
 			if (strcmp(vers, AIRCODE) > 0) {
 				fprintf(stdout, "\nA newer version of \"Aircrack-ng\" is available (%s), do you want to use it? (default is %s)  [Y-N]\n", vers, AIRCODE);
 				do {
-					scanf("%c%*c", &c);
+					fgets(buff, BUFF-1, stdin);
+					sscanf(buff, "%c", &c);
 					c = toupper(c);
-				} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
+				} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
 			}
 		}
+		fclose(fp);
 	}
-	fclose(fp);
+	//else
+		//fprintf(stderr, "Error reading from file \"%s\": %s\n", "/tmp/AIRVERSION", strerror(errno));
 	system("rm -f /tmp/AIRVERSION");
 
 	//download chosen version
@@ -195,9 +198,10 @@ int akngInstall()
 
     fprintf(stdout, "\nConfirm installation?  [Y-N]\n");
 	do {
-		scanf("%c%*c", &c);
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%c", &c);
 		c = toupper(c);
-	} while (c != 'Y' && c != 'N' && printf("Type only [Y-N]\n"));
+	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
 
     if( c=='Y' ) {
         fprintf(stdout, "\tCompiling and installing... (in case of errors check dependencies)\n\n");

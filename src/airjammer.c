@@ -48,7 +48,7 @@ static void sigHandler(int);
 //General variables
 static char *bssid;
 static char *mon;
-static maclist_t *maclst;
+static maclist_t maclst;
 
 
 int main (int argc, char *argv[])

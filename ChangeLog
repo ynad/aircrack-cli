@@ -1,3 +1,12 @@
+Version 1.2.2 (changes from 1.2.1) - Released 01/03/2014:
+* Various Bug fixes
+* Corrected print of MAC addresses on stdout
+* Added option to use monitor interface without a fixed channel
+* Improved in-program inputs
+* Added file input method in single deauth
+* lib.c: fixed realloc of MAC list
+* Added interactive packet replay mode
+
 Version 1.2.1 (changes from 1.1.8) - Released 16/02/2014:
 * Added support for WEP attack and cracking
 * Differentation on encryption type

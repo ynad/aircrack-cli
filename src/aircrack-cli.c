@@ -1,6 +1,6 @@
 /**CFile***********************************************************************
 
-   FileName    [main.c]
+   FileName    [aircrack-cli.c]
 
    PackageName [Aircrack-CLI]
 
@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-02-14]
+   Revision    [2014-03-01]
 
 ******************************************************************************/
 
@@ -36,7 +36,6 @@
 #include "install.h"
 
 //Module defines
-#define CLEAR "clear"
 #define MON "mon0"
 #define PIDPTH "/tmp/aircli-pid-0"
 
@@ -46,8 +45,8 @@ static void printHeader();
 static int argCheck(int, char **, char, char *, char *);
 static void printSyntax(char *, char, char *);
 static void installer();
-static void printMenu(int, char *, char *, char *, char *, char *, maclist_t *);
-static int jammer(char *, char *, char *, maclist_t *, int);
+static void printMenu(int, char *, char *, char *, char *, char *, maclist_t);
+static int jammer(char *, char *, char *, maclist_t, int);
 static char netwPrompt(char *, char *, char *, char *);
 static void netwCheck(char, char *, char *, char *);
 static int checkExit(char c, char *, char *, char *, char *, char *, char *);
@@ -61,11 +60,11 @@ static void sigHandler(int);
 int main(int argc, char *argv[])
 {
     //general variables
-    int opz, inst=TRUE;
-	maclist_t *maclst=NULL;
+    int opz, inst=TRUE, ch;
+	maclist_t maclst=NULL;
 
     //program strings
-    char c, id, can[BUFF], bssid[BUFF], encr[BUFF], fout[BUFF], manag[BUFF], inmon[BUFF]={MON}, monmac[BUFF], pidpath[BUFF]={PIDPTH}, stdwlan[BUFF], netwstart[BUFF], netwstop[BUFF];
+    char c, id, buff[BUFF], can[BUFF], bssid[BUFF], encr[BUFF], fout[BUFF], manag[BUFF], inmon[BUFF]={MON}, monmac[BUFF], pidpath[BUFF]={PIDPTH}, stdwlan[BUFF], netwstart[BUFF], netwstop[BUFF];
     char startmon[BUFF]={"airmon-ng start"}, stopmon[BUFF]={"airmon-ng stop "};
 	char montmp[BUFF]={"xterm 2> /dev/null -T MonitorTemp -e airodump-ng"};
 	char scanmon[BUFF]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
@@ -87,7 +86,7 @@ int main(int argc, char *argv[])
 
     //check execution rights
     if (getgid() != 0) {
-        fprintf(stdout, "Run the program with administrator rights!\n\n");
+        fprintf(stderr, "Run the program with administrator rights!\n\n");
 		return (EXIT_FAILURE);
     }
 
@@ -123,22 +122,26 @@ int main(int argc, char *argv[])
     system(montmp);
 
     //data acquisition
-    fprintf(stdout, "\nChannel number (0 to clean-exit):\t");
+    fprintf(stdout, "\nChannel number [-1 if none] (0 to clean-exit):\t");
 	do {
-		fscanf(stdin, "%s", can);
-		sscanf(can, "%d", &opz);
-	} while ((opz < 1 || opz > 14) && opz != 0 && fprintf(stdout, "Allowed only channels in range [1-14]:\t"));
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%s", can);
+		if (sscanf(can, "%d", &ch) != 1)
+			ch = -2;
+	} while ((ch < -1 || ch > 14) && ch != 0 && fprintf(stdout, "Allowed only channels in range [1-14]:\t"));
     checkExit(c, can, stopmon, pidpath, netwstart, stdwlan, manag);
 
-    fprintf(stdout, "\nTarget BSSID (0 to clean-exit):\t\t");
+    fprintf(stdout, "\nTarget BSSID (0 to clean-exit):\t\t\t");
 	do {
-		fscanf(stdin, "%s", bssid);
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%s", bssid);
 	} while (strcmp(bssid, "0") && checkMac(bssid) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
     checkExit(c, bssid, stopmon, pidpath, netwstart, stdwlan, manag);
 
-	fprintf(stdout, "\nEncryption type [WPA/WEP/OPN] (0 to clean-exit):\t");
+	fprintf(stdout, "\nEncryption [WPA/WEP/OPN] (0 to clean-exit):\t");
 	do {
-		fscanf(stdin, "%s", encr);
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%s", encr);
 	} while (strcmp(encr, "0") && (opz=checkEncr(encr)) == FALSE && fprintf(stdout, "Incorrect value or wrong format:\t"));
     checkExit(c, encr, stopmon, pidpath, netwstart, stdwlan, manag);
 
@@ -150,7 +153,8 @@ int main(int argc, char *argv[])
     /** STAGE 2 **/
 
     fprintf(stdout, "\n === Start monitor interface ===\n");
-    strcat(startmon, can);
+	if (ch != -1)
+		strcat(startmon, can);
     system(startmon);
 
     //PID file handling and set inmon
@@ -172,7 +176,8 @@ int main(int argc, char *argv[])
 	if (opz == WEP) {
 		fprintf(stdout, "\nMAC of monitor interface (0 to clean-exit):\t");
 		do {
-			fscanf(stdin, "%s", monmac);
+			fgets(buff, BUFF-1, stdin);
+			sscanf(buff, "%s", monmac);
 		} while (strcmp(monmac, "0") && checkMac(monmac) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
 		checkExit(c, monmac, stopmon, pidpath, netwstart, stdwlan, manag);
 	}
@@ -181,13 +186,16 @@ int main(int argc, char *argv[])
 
     //output file
     fprintf(stdout, "\nOutput file (0 to clean-exit):\t");
-	getchar();
 	fgets(fout, BUFF-1, stdin);
-	fout[strlen(fout)-1] = '\0';
+	if (fout[strlen(fout)-1] == '\n')
+		fout[strlen(fout)-1] = '\0';
     checkExit(c, fout, stopmon, pidpath, netwstart, stdwlan, manag);
 
-    //scanner handshake
-    sprintf(scanmon, "%s %s -c %s -w \"%s\" %s --ignore-negative-one &", scanmon, bssid, can, fout, inmon);
+    //scanner handshake, without or with channel
+	if (ch == -1)
+		sprintf(scanmon, "%s %s -w \"%s\" %s --ignore-negative-one &", scanmon, bssid, fout, inmon);
+	else
+		sprintf(scanmon, "%s %s -c %s -w \"%s\" %s --ignore-negative-one &", scanmon, bssid, can, fout, inmon);
     system(scanmon);
 
 	//ciclic menu and action chooser
@@ -269,21 +277,24 @@ static void printSyntax(char *argv0, char id, char *stdwlan)
 /* Installer client */
 static void installer()
 {
-    char c=0;
+    char c=0, buff[BUFF];
 
 	//check program updates
 	fprintf(stdout, "\nDo you want to check for available updates? (requires internet connection!)  [Y-N]\n");
 	do {
-		fscanf(stdin, "%c%*c", &c);
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%c", &c);
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
     if (c == 'Y')
 		checkVersion();
+	c = '0';
 
     //dependencies
     fprintf(stdout, "\nInstall requested dependencies to run this program?  [Y-N]\n");
 	do {
-		fscanf(stdin, "%c%*c", &c);
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%c", &c);
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
     if (c == 'Y')
@@ -294,7 +305,8 @@ static void installer()
     //aircrack-ng
     fprintf(stdout, "\nDownload and install \"Aircrack-ng\"?  [Y-N]\n");
 	do {
-		fscanf(stdin, "%c%*c", &c);
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%c", &c);
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
     if (c == 'Y')
@@ -304,25 +316,29 @@ static void installer()
 
 
 /* Ciclic print menu and exec actions */
-static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmon, char *monmac, maclist_t *maclst)
+static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmon, char *monmac, maclist_t maclst)
 {
 	int opz = -1;
-	char dict[BUFF];
+	char dict[BUFF], buff[BUFF];
 
     //action menu
     do {
         fprintf(stdout, "\n\nChoose an action:\n=================\n");
-		fprintf(stdout, "\t1. De-authenticate client(s)\n\t2. Jammer (MAC list)\n\t3. Jammer (broadcast)\n");
+		fprintf(stdout, "\t%2d. De-authenticate client(s)\n\t%2d. Jammer (MAC list)\n\t%2d. Jammer (broadcast)\n", 1, 2, 3);
 		if (mode == WPA) {
-			fprintf(stdout, "\t4. Start cracking on current acquired packets (WPA)\n");
+			fprintf(stdout, "\t%2d. Start cracking on current acquired packets (WPA)\n", 4);
 		}
 		else if (mode == WEP) {
-			fprintf(stdout, "\t4. Fake authentication (single)\n\t5. Fake authentication (keep-alive)\n"
-					"\t6. ARP request replay mode\n\t7. Start cracking on current acquired packets (WEP - PTW method)\n"
-					"\t8. Start cracking on current acquired packets (WEP - FMS/Korek method)\n");
+			fprintf(stdout, "\t%2d. Fake authentication (single)\n\t%2d. Fake authentication (keep-alive)\n"
+					"\t%2d. ARP request replay mode\n\t%2d. Interactive packet replay\n"
+					"\t%2d. Start cracking on current acquired packets (WEP - PTW method)\n"
+					"\t%2d. Start cracking on current acquired packets (WEP - FMS/Korek method)\n", 4, 5, 6, 7, 8,9);
 		}
-		fprintf(stdout, "\t0. Stop scanner\n");
-        fscanf(stdin, "%d", &opz);
+		fprintf(stdout, "\t%2d. Stop scanner\n", 0);
+		do
+			fgets(buff, BUFF-1, stdin);
+		while (sscanf(buff, "%d", &opz) != 1 && fprintf(stdout, "Type only integers\n"));
+
         switch (opz) {
 		case 1:
 			fprintf(stdout, "De-auth client(s)...\n");
@@ -339,9 +355,9 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 		case 4:
 			if (mode == WPA) {
 				fprintf(stdout, "\nPath to dictionary for bruteforce attack:\t");
-				getchar();
 				fgets(dict, BUFF-1, stdin);
-				dict[strlen(dict)-1] = '\0';
+				if (dict[strlen(dict)-1] == '\n')
+					dict[strlen(dict)-1] = '\0';
 				fprintf(stdout, "Launching WPA crack...\n");
 				packCrack(fout, dict, 1);
 			}
@@ -370,13 +386,22 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 			break;
 		case 7:
 			if (mode == WEP) {
+				fprintf(stdout, "Running interactive packet replay...\n");
+				interReplay(bssid, inmon);
+			}
+			else 
+				fprintf(stdout, "\nError: unexpected option!\n");
+			break;			
+			break;
+		case 8:
+			if (mode == WEP) {
 				fprintf(stdout, "Launching WEP crack (PTW method)...\n");
 				packCrack(fout, NULL, 2);
 			}
 			else 
 				fprintf(stdout, "\nError: unexpected option!\n");
 			break;
-		case 8:
+		case 9:
 			if (mode == WEP) {
 				fprintf(stdout, "Launching WEP crack (FMS/Korek method)...\n");
 				packCrack(fout, NULL, 3);
@@ -394,7 +419,7 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 
 
 /* Interface to AirJammer */
-static int jammer(char *argv0, char *bssid, char *inmon, maclist_t *maclst, int flag)
+static int jammer(char *argv0, char *bssid, char *inmon, maclist_t maclst, int flag)
 {
 	char cmd[BUFF], path[BUFF], argvz[BUFF], list[]={"/tmp/maclist.txt"};
 	int i, stop=0;
@@ -404,7 +429,7 @@ static int jammer(char *argv0, char *bssid, char *inmon, maclist_t *maclst, int 
 
 	if (flag == 1) {
 		if (maclst == NULL) {
-			fprintf(stdout, "\nError: MAC list is still empty!\n");
+			fprintf(stderr, "\nError: MAC list is still empty!\n");
 			return (EXIT_FAILURE);
 		}
 		if (fprintMaclist(maclst, list) == EXIT_FAILURE) {
@@ -449,7 +474,8 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
     //stop potentially unwanted processes
     fprintf(stdout, "\nDo you want to stop \"%s\" (E to input different manager)?  [Y-N]\n", manag);
 	do {
-		fscanf(stdin, "%c%*c", &c);
+		fgets(tmp, BUFF-1, stdin);
+		sscanf(tmp, "%c", &c);
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && c != 'E' && fprintf(stdout, "Type only [Y-N]\n"));
 
@@ -512,7 +538,8 @@ static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
 		if (flag == TRUE) {
 			if ((fp = fopen(pidpath, "r")) != NULL) {
 				if (fgets(pidpath, 20, fp) != NULL) {
-					pidpath[strlen(pidpath)-1] = '\0';
+					if (pidpath[strlen(pidpath)-1] == '\n')
+						pidpath[strlen(pidpath)-1] = '\0';
 					if (strcmp(stdwlan, pidpath) != 0) {
 						fprintf(stdout, "\nRestoring permanent MAC of interface \"%s\"...\n", stdwlan);
 						macchanger(stdwlan, FALSE);
