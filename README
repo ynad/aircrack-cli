@@ -10,7 +10,7 @@ See ChangeLog for details.
     
 
     BUGS:
-    - from other path can't find airjammer.bin
+    
 
 
 Description:
@@ -35,6 +35,8 @@ List of features:
 
 Installation:
 -------------
+System requirements: build-essential ('make' and 'gcc').
+
   - Compile:
       `make`
 
