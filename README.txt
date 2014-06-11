@@ -10,7 +10,6 @@ See ChangeLog for details.
     
 
     BUGS:
-    
 
 
 Description:
@@ -35,7 +34,17 @@ List of features:
 
 Installation:
 -------------
-System requirements: build-essential ('make' and 'gcc').
+Compatible with Linux ONLY!
+System requirements (automatic install provided):
+  * build-essential ('make' and 'gcc')
+  * xterm
+  * wget
+  * macchanger
+
+For compiling and installing Aircrack-ng:
+  * libssl-dev/openssl-devel
+  * libnl-3-dev/libnl3-devel
+  * libnl-genl-3-dev/libnl-genl3-devel
 
   - Compile:
       `make`
@@ -48,6 +57,11 @@ System requirements: build-essential ('make' and 'gcc').
 
   - Uninstall:
       `make uninstall`
+
+
+License:
+--------
+GPLv2, see LICENSE.md
 
 
 Author:

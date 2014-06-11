@@ -13,7 +13,7 @@
 
   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-02-23]
+  Revision    [2014-06-10]
 
 ******************************************************************************/
 
@@ -40,8 +40,8 @@
 #define TRUE 1
 
 #define TMPDIR "/tmp/ngtmp/"
-#define AIRNAME "aircrack-ng-1.2-beta2.tar.gz"
-#define AIRCODE "1.2-beta2"
+#define AIRNAME "aircrack-ng-1.2-beta3.tar.gz"
+#define AIRCODE "1.2-beta3"
 #define AIRVERS "https://raw.github.com/aircrack-ng/aircrack-ng/master/VERSION"
 #define DISTRO "/proc/version"
 #define UBUNTU "Ubuntu"
@@ -62,6 +62,7 @@ int depInstall()
     fprintf(stdout, "\nThe following dependencies are requested:\n"
             "\t* build-essential\n"
             "\t* libssl-dev/openssl-devel\n"
+            "\t* libnl-3-dev, libnl-genl-3-dev\n"
 			"\t* xterm\n"
             "\t* wget\n"
             "\t* macchanger\n"
@@ -81,12 +82,12 @@ int depInstall()
         fprintf(stdout, "\nInstalling dependencies...\n\n");
 		//Ubuntu
 		if (id == 'u')
-			system("apt-get install build-essential libssl-dev xterm wget macchanger --install-suggests -y --force-yes");
+			system("apt-get install build-essential libssl-dev libnl-3-dev libnl-genl-3-dev xterm wget macchanger --install-suggests -y --force-yes");
 		//yum-based
 		else if (id == 'y')
-			system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel xterm wget macchanger -y");
+			system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel libnl3-devel libnl-genl3-devel xterm wget macchanger -y");
 		else if (id == 'a')
-			system("pacman -S base-devel openssl xterm wget macchanger --noconfirm");
+			system("pacman -S base-devel openssl libnl xterm wget macchanger --noconfirm");
 		else {
 			fprintf(stderr, "ERROR\n");
 			return (EXIT_FAILURE);
