@@ -1,19 +1,19 @@
 /**CHeaderFile*****************************************************************
 
-  FileName    [install.h]
+   FileName    [install.h]
 
-  PackageName [Aircrack-CLI]
+   PackageName [Aircrack-CLI]
 
-  Synopsis    [Aircrack Command Line Interface - Installer handler]
+   Synopsis    [Aircrack Command Line Interface - Installer handler]
 
-  Description [Command Line Interface for Aircrack-ng 
-  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+   Description [Command Line Interface for Aircrack-ng 
+   (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
 
-  Author      [ynad, stethewwolf]
+   Author      [ynad, stethewwolf]
 
-  License     [GPLv2, see LICENSE.md]
+   License     [GPLv2, see LICENSE.md]
 
-  Revision    [2013-11-22]
+   Revision    [2013-11-22]
 
 ******************************************************************************/
 

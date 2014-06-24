@@ -1,21 +1,21 @@
 /**CFile***********************************************************************
 
-  FileName    [airjammer.c]
+   FileName    [airjammer.c]
 
-  PackageName [Aircrack-CLI]
+   PackageName [Aircrack-CLI]
 
-  Synopsis    [Aircrack Command Line Interface - AirJammer]
+   Synopsis    [Aircrack Command Line Interface - AirJammer]
 
-  Description [Wifi jammer on chosen wireless network: sends disassociate 
-  packets to list of clients or in broadcast mode, optimized for 
-  multi-thread execution. 
-  Useful to capture WPA/WPA2 handshakes or jam a wireless network]
+   Description [Wifi jammer on chosen wireless network: sends disassociate 
+   packets to list of clients or in broadcast mode, optimized for 
+   multi-thread execution. 
+   Useful to capture WPA/WPA2 handshakes or jam a wireless network]
 
-  Author      [ynad]
+   Author      [ynad]
 
-  License     [GPLv2, see LICENSE.md]
+   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-01-24]
+   Revision    [2014-01-24]
 
 ******************************************************************************/
 
@@ -60,10 +60,10 @@ int main (int argc, char *argv[])
 	signal(SIGINT, sigHandler);
 
 	//check execution permissions
-    if (getgid() != 0) {
-        fprintf(stderr, "Run it as root!\n");
+	if (getgid() != 0) {
+		fprintf(stderr, "Run it as root!\n");
 		return (EXIT_FAILURE);
-    }
+	}
 
 	//syntax
 	if (argc < 3) {
@@ -99,7 +99,7 @@ int main (int argc, char *argv[])
 			return (EXIT_FAILURE);
 		}
 		//creation of threads
-  		if (dim <= MAXTHREAD)
+		if (dim <= MAXTHREAD)
 			fprintf(stdout, "\tStarting %d deauths:\n", dim);
 		else
 			fprintf(stdout, "\tStarting %d (max. allowed) deauths out of %d requested:\n", MAXTHREAD, dim);
