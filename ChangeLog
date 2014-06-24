@@ -1,3 +1,7 @@
+Version 1.2.3 (changes from 1.2.2) - Released 23/06/2014:
+* Makefile updated
+* Automatic parse of modified MAC for monitor interface in WEP mode
+
 Version 1.2.2 (changes from 1.2.1) - Released 01/03/2014:
 * Various Bug fixes
 * Corrected print of MAC addresses on stdout

@@ -3,7 +3,7 @@ Aircrack-CLI - Command Line Interface
 
 Version:
 --------
-1.2.2 (2014-03-01)
+1.2.3 (2014-06-23)
 See ChangeLog for details. 
 
     TODO:

@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-03-01]
+   Revision    [2014-06-19]
 
 ******************************************************************************/
 
@@ -59,13 +59,13 @@ static void sigHandler(int);
 
 int main(int argc, char *argv[])
 {
-    //general variables
-    int opz, inst=TRUE, ch;
+	//general variables
+	int opz, inst=TRUE, ch;
 	maclist_t maclst=NULL;
 
-    //program strings
-    char c, id, buff[BUFF], can[BUFF], bssid[BUFF], encr[BUFF], fout[BUFF], manag[BUFF], inmon[BUFF]={MON}, monmac[BUFF], pidpath[BUFF]={PIDPTH}, stdwlan[BUFF], netwstart[BUFF], netwstop[BUFF];
-    char startmon[BUFF]={"airmon-ng start"}, stopmon[BUFF]={"airmon-ng stop "};
+	//program strings
+	char c, id, buff[BUFF], can[BUFF], bssid[BUFF], encr[BUFF], fout[BUFF], manag[BUFF], inmon[BUFF]={MON}, monmac[BUFF], pidpath[BUFF]={PIDPTH}, stdwlan[BUFF], netwstart[BUFF], netwstop[BUFF];
+	char startmon[BUFF]={"airmon-ng start"}, stopmon[BUFF]={"airmon-ng stop "};
 	char montmp[BUFF]={"xterm 2> /dev/null -T MonitorTemp -e airodump-ng"};
 	char scanmon[BUFF]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
 
@@ -75,8 +75,8 @@ int main(int argc, char *argv[])
 	//set signal handler for SIGINT (Ctrl-C)
 	signal(SIGINT, sigHandler);
 
-    //print initial message
-    printHeader();
+	//print initial message
+	printHeader();
 
 	//set environment variables and strings depending on OS type
 	id = setDistro(stdwlan, netwstart, netwstop, manag);
@@ -84,83 +84,83 @@ int main(int argc, char *argv[])
 	//check arguments and set stuff
 	inst = argCheck(argc, argv, id, startmon, stdwlan);
 
-    //check execution rights
-    if (getgid() != 0) {
-        fprintf(stderr, "Run the program with administrator rights!\n\n");
+	//check execution rights
+	if (getgid() != 0) {
+		fprintf(stderr, "Run the program with administrator rights!\n\n");
 		return (EXIT_FAILURE);
-    }
+	}
 
-    //run installer if not skipped
-    if (inst == TRUE)
-        installer();
+	//run installer if not skipped
+	if (inst == TRUE)
+		installer();
 
 	//prompt wheter to stop network-manager
 	c = netwPrompt(netwstart, netwstop, stdwlan, manag);
 
 
-    /** STAGE 1 **/
+	/** STAGE 1 **/
 
-    fprintf(stdout, "\n\n === Start temporary monitor interface ===\n");
-    system(startmon);
+	fprintf(stdout, "\n\n === Start temporary monitor interface ===\n");
+	system(startmon);
 
-    //PID file handling and set inmon
-    pidOpen(inmon, pidpath, stdwlan);
+	//PID file handling and set inmon
+	pidOpen(inmon, pidpath, stdwlan);
 
 	//check monitor, if not found exit
 	if (checkMon(inmon) == EXIT_FAILURE)
 		checkExit(c, "0", NULL, pidpath, netwstart, stdwlan, manag);
 
-    //monitor MAC changer (use macchanger)
+	//monitor MAC changer (use macchanger)
 	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
-    macchanger(inmon, TRUE);
+	macchanger(inmon, TRUE, NULL);
 
-    //set stop monitor
-    strcat(stopmon, inmon);
+	//set stop monitor
+	strcat(stopmon, inmon);
 
-    //network scanner in detached terminal
-    sprintf(montmp, "%s %s &", montmp, inmon);
-    system(montmp);
+	//network scanner in detached terminal
+	sprintf(montmp, "%s %s &", montmp, inmon);
+	system(montmp);
 
-    //data acquisition
-    fprintf(stdout, "\nChannel number [-1 if none] (0 to clean-exit):\t");
+	//data acquisition
+	fprintf(stdout, "\nChannel number [-1 if none] (0 to clean-exit):\t");
 	do {
 		fgets(buff, BUFF-1, stdin);
 		sscanf(buff, "%s", can);
 		if (sscanf(can, "%d", &ch) != 1)
 			ch = -2;
 	} while ((ch < -1 || ch > 14) && ch != 0 && fprintf(stdout, "Allowed only channels in range [1-14]:\t"));
-    checkExit(c, can, stopmon, pidpath, netwstart, stdwlan, manag);
+	checkExit(c, can, stopmon, pidpath, netwstart, stdwlan, manag);
 
-    fprintf(stdout, "\nTarget BSSID (0 to clean-exit):\t\t\t");
+	fprintf(stdout, "\nTarget BSSID (0 to clean-exit):\t\t\t");
 	do {
 		fgets(buff, BUFF-1, stdin);
 		sscanf(buff, "%s", bssid);
 	} while (strcmp(bssid, "0") && checkMac(bssid) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
-    checkExit(c, bssid, stopmon, pidpath, netwstart, stdwlan, manag);
+	checkExit(c, bssid, stopmon, pidpath, netwstart, stdwlan, manag);
 
 	fprintf(stdout, "\nEncryption [WPA/WEP/OPN] (0 to clean-exit):\t");
 	do {
 		fgets(buff, BUFF-1, stdin);
 		sscanf(buff, "%s", encr);
 	} while (strcmp(encr, "0") && (opz=checkEncr(encr)) == FALSE && fprintf(stdout, "Incorrect value or wrong format:\t"));
-    checkExit(c, encr, stopmon, pidpath, netwstart, stdwlan, manag);
+	checkExit(c, encr, stopmon, pidpath, netwstart, stdwlan, manag);
 
-    //close monitor and remove PID
+	//close monitor and remove PID
 	stopMonitor(stopmon, pidpath);
-    sleep(1);
+	sleep(1);
 
 
-    /** STAGE 2 **/
+	/** STAGE 2 **/
 
-    fprintf(stdout, "\n === Start monitor interface ===\n");
+	fprintf(stdout, "\n === Start monitor interface ===\n");
 	if (ch != -1)
 		strcat(startmon, can);
-    system(startmon);
+	system(startmon);
 
-    //PID file handling and set inmon
+	//PID file handling and set inmon
 	inmon[strlen(inmon)-1] = '0';
 	pidpath[strlen(pidpath)-1] = '0';
-    pidOpen(inmon, pidpath, stdwlan);
+	pidOpen(inmon, pidpath, stdwlan);
 	//fix monitor number
 	stopmon[strlen(stopmon)-1] = inmon[strlen(inmon)-1];
 
@@ -168,35 +168,40 @@ int main(int argc, char *argv[])
 	if (checkMon(inmon) == EXIT_FAILURE)
 		checkExit(c, "0", NULL, pidpath, netwstart, stdwlan, manag);
 
-    //monitor MAC changer (use macchanger)
+	//monitor MAC changer (use macchanger)
 	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
-    macchanger(inmon, TRUE);
 
 	//get monitor MAC (WEP mode)
 	if (opz == WEP) {
-		fprintf(stdout, "\nMAC of monitor interface (0 to clean-exit):\t");
-		do {
-			fgets(buff, BUFF-1, stdin);
-			sscanf(buff, "%s", monmac);
-		} while (strcmp(monmac, "0") && checkMac(monmac) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
-		checkExit(c, monmac, stopmon, pidpath, netwstart, stdwlan, manag);
+		macchanger(inmon, TRUE, monmac);
+		//null string in case of error or wrong format: manual input
+		if (monmac[0] == '\0' || checkMac(monmac) == FALSE) {
+			fprintf(stdout, "\nMAC of monitor interface (0 to clean-exit):\t");
+			do {
+				fgets(buff, BUFF-1, stdin);
+				sscanf(buff, "%s", monmac);
+			} while (strcmp(monmac, "0") && checkMac(monmac) == FALSE && fprintf(stdout, "Incorrect address or wrong format:\t"));
+			checkExit(c, monmac, stopmon, pidpath, netwstart, stdwlan, manag);
+		}
 	}
-	else 
+	else {
+		macchanger(inmon, TRUE, NULL);
 		monmac[0] = '\0';
+	}
 
-    //output file
-    fprintf(stdout, "\nOutput file (0 to clean-exit):\t");
+	//output file
+	fprintf(stdout, "\nOutput file (0 to clean-exit):\t");
 	fgets(fout, BUFF-1, stdin);
 	if (fout[strlen(fout)-1] == '\n')
 		fout[strlen(fout)-1] = '\0';
-    checkExit(c, fout, stopmon, pidpath, netwstart, stdwlan, manag);
+	checkExit(c, fout, stopmon, pidpath, netwstart, stdwlan, manag);
 
-    //scanner handshake, without or with channel
+	//scanner handshake, without or with channel
 	if (ch == -1)
 		sprintf(scanmon, "%s %s -w \"%s\" %s --ignore-negative-one &", scanmon, bssid, fout, inmon);
 	else
 		sprintf(scanmon, "%s %s -c %s -w \"%s\" %s --ignore-negative-one &", scanmon, bssid, can, fout, inmon);
-    system(scanmon);
+	system(scanmon);
 
 	//ciclic menu and action chooser
 	printMenu(opz, argv[0], fout, bssid, inmon, monmac, maclst);
@@ -205,24 +210,24 @@ int main(int argc, char *argv[])
 	/** FINAL STAGE **/
 	fprintf(stdout, "Exiting...\n");
 
-    //close monitor, network manager check and memory free
-    stopMonitor(stopmon, pidpath);
-    netwCheck(c, netwstart, stdwlan, manag);
+	//close monitor, network manager check and memory free
+	stopMonitor(stopmon, pidpath);
+	netwCheck(c, netwstart, stdwlan, manag);
 	freeMem(maclst);
 
-    //greetings
-    fprintf(stdout, "\nTerminated.\nData written to file \"%s\". Launch \"./air-cat.sh\" to start cracking.\n\n", fout);
+	//greetings
+	fprintf(stdout, "\nTerminated.\nData written to file \"%s\". Launch \"./air-cat.sh\" to start cracking.\n\n", fout);
 
-    return (EXIT_SUCCESS);
+	return (EXIT_SUCCESS);
 }
 
 
 /* Prints program header */
 static void printHeader()
 {
-    fprintf(stdout, "\n =======================================================================\n");
-    fprintf(stdout, "    Aircrack-CLI  |  Command Line Interface - v. %s (%s)\n", VERS, BUILD);
-    fprintf(stdout, " =======================================================================\n\n");
+	fprintf(stdout, "\n =======================================================================\n");
+	fprintf(stdout, "    Aircrack-CLI  |  Command Line Interface - v. %s (%s)\n", VERS, BUILD);
+	fprintf(stdout, " =======================================================================\n\n");
 }
 
 
@@ -231,28 +236,28 @@ static int argCheck(int argc, char **argv, char id, char *startmon, char *stdwla
 {
 	int inst=TRUE;
 
-    //set network interface name and other parameters
-    if (argc >= 2) {
-        if (!strcmp(argv[1], "N") || !strcmp(argv[1], "n")) {     //installer skipped
-            inst = FALSE;
-            if (argc == 3) {
-                sprintf(startmon, "%s %s ", startmon, argv[2]);
+	//set network interface name and other parameters
+	if (argc >= 2) {
+		if (!strcmp(argv[1], "N") || !strcmp(argv[1], "n")) {     //installer skipped
+			inst = FALSE;
+			if (argc == 3) {
+				sprintf(startmon, "%s %s ", startmon, argv[2]);
 				sprintf(stdwlan, " %s ", argv[2]);
 			}
-            else
-                strcat(startmon, stdwlan);
-        }
-        else {
-            sprintf(startmon, "%s %s ", startmon, argv[1]);
+			else
+				strcat(startmon, stdwlan);
+		}
+		else {
+			sprintf(startmon, "%s %s ", startmon, argv[1]);
 			sprintf(stdwlan, " %s ", argv[1]);
 			if (argc == 3 && (!strcmp(argv[2], "N") || !strcmp(argv[2], "n")))
 				inst = FALSE;
 		}
-    }
-    else {    //standard interface
-        strcat(startmon, stdwlan);	
+	}
+	else {    //standard interface
+		strcat(startmon, stdwlan);	
 		printSyntax(argv[0], id, stdwlan);
-    }
+	}
 	return inst;
 }
 
@@ -260,24 +265,24 @@ static int argCheck(int argc, char **argv, char id, char *startmon, char *stdwla
 /* Prints program syntax */
 static void printSyntax(char *argv0, char id, char *stdwlan)
 {
-    fprintf(stdout, "\nSyntax: ");	
-    if (id == 'u')         //Debian-based
+	fprintf(stdout, "\nSyntax: ");	
+	if (id == 'u')         //Debian-based
 		fprintf(stdout, "sudo ");
-    else if (id == 'y')    //RedHat-based
+	else if (id == 'y')    //RedHat-based
 		fprintf(stdout, "su -c \"");
 	else    //others
 		fprintf(stdout, "su -c \"");
-    fprintf(stdout, "%s [N] [WLAN-IF]", argv0);
+	fprintf(stdout, "%s [N] [WLAN-IF]", argv0);
 	if (id != 'u')
 		fprintf(stdout, "\"");
-    fprintf(stdout, "\nOptional parameters:\n\t[N]\t    skips installation\n\t[WLAN-IF]   specifies wireless interface (default \"%s\")\n\n", stdwlan);
+	fprintf(stdout, "\nOptional parameters:\n\t[N]\t    skips installation\n\t[WLAN-IF]   specifies wireless interface (default \"%s\")\n\n", stdwlan);
 }
 
 
 /* Installer client */
 static void installer()
 {
-    char c=0, buff[BUFF];
+	char c=0, buff[BUFF];
 
 	//check program updates
 	fprintf(stdout, "\nDo you want to check for available updates? (requires internet connection!)  [Y-N]\n");
@@ -286,32 +291,32 @@ static void installer()
 		sscanf(buff, "%c", &c);
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
-    if (c == 'Y')
+	if (c == 'Y')
 		checkVersion();
 	c = '0';
 
-    //dependencies
-    fprintf(stdout, "\nInstall requested dependencies to run this program?  [Y-N]\n");
+	//dependencies
+	fprintf(stdout, "\nInstall requested dependencies to run this program?  [Y-N]\n");
 	do {
 		fgets(buff, BUFF-1, stdin);
 		sscanf(buff, "%c", &c);
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
-    if (c == 'Y')
-        if (depInstall())
-            fprintf(stdout, "Attention: without all dependencies this program may not work properly!\n\n");
-    c = '0';
+	if (c == 'Y')
+		if (depInstall())
+			fprintf(stdout, "Attention: without all dependencies this program may not work properly!\n\n");
+	c = '0';
 
-    //aircrack-ng
-    fprintf(stdout, "\nDownload and install \"Aircrack-ng\"?  [Y-N]\n");
+	//aircrack-ng
+	fprintf(stdout, "\nDownload and install \"Aircrack-ng\"?  [Y-N]\n");
 	do {
 		fgets(buff, BUFF-1, stdin);
 		sscanf(buff, "%c", &c);
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
-    if (c == 'Y')
-        if (akngInstall())
-            fprintf(stdout, "Attention: \"Aircrack-ng\" NOT installed!\n\n");
+	if (c == 'Y')
+		if (akngInstall())
+			fprintf(stdout, "Attention: \"Aircrack-ng\" NOT installed!\n\n");
 }
 
 
@@ -321,9 +326,9 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 	int opz = -1;
 	char dict[BUFF], buff[BUFF];
 
-    //action menu
-    do {
-        fprintf(stdout, "\n\nChoose an action:\n=================\n");
+	//action menu
+	do {
+		fprintf(stdout, "\n\nChoose an action:\n=================\n");
 		fprintf(stdout, "\t%2d. De-authenticate client(s)\n\t%2d. Jammer (MAC list)\n\t%2d. Jammer (broadcast)\n", 1, 2, 3);
 		if (mode == WPA) {
 			fprintf(stdout, "\t%2d. Start cracking on current acquired packets (WPA)\n", 4);
@@ -339,7 +344,7 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 			fgets(buff, BUFF-1, stdin);
 		while (sscanf(buff, "%d", &opz) != 1 && fprintf(stdout, "Type only integers\n"));
 
-        switch (opz) {
+		switch (opz) {
 		case 1:
 			fprintf(stdout, "De-auth client(s)...\n");
 			maclst = deauthClient(bssid, inmon, maclst);
@@ -413,8 +418,8 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 			break;
 		default:
 			fprintf(stdout, "\nError: unexpected option!\n");
-        }
-    } while (opz != 0);
+		}
+	} while (opz != 0);
 }
 
 
@@ -438,9 +443,9 @@ static int jammer(char *argv0, char *bssid, char *inmon, maclist_t maclst, int f
 	}
 	
 	if (getcwd(path, BUFF) == NULL) {
-        fprintf(stderr, "\nError reading current path: %s\n", strerror(errno));
-        return (EXIT_FAILURE);
-    }
+		fprintf(stderr, "\nError reading current path: %s\n", strerror(errno));
+		return (EXIT_FAILURE);
+	}
 	//use a copy of argv[0], to not modify it
 	strcpy(argvz, argv0);
 
@@ -470,9 +475,9 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 	//clear error value
 	errno = 0;
 
-    c = '0';
-    //stop potentially unwanted processes
-    fprintf(stdout, "\nDo you want to stop \"%s\" (E to input different manager)?  [Y-N]\n", manag);
+	c = '0';
+	//stop potentially unwanted processes
+	fprintf(stdout, "\nDo you want to stop \"%s\" (E to input different manager)?  [Y-N]\n", manag);
 	do {
 		fgets(tmp, BUFF-1, stdin);
 		sscanf(tmp, "%c", &c);
@@ -484,7 +489,7 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 		fprintf(stdout, "Input new manager name (\"null\" or empty if none):\t");
 		fgets(tmp, BUFF-1, stdin);
 		sscanf(tmp, "%s", newman);
-	    ptr = replace_str(netwstart, manag, newman);
+		ptr = replace_str(netwstart, manag, newman);
 		strcpy(netwstart, ptr);
 		ptr = replace_str(netwstop, manag, newman);
 		strcpy(netwstop, ptr);
@@ -492,7 +497,7 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 		c = 'Y';
 	}
 	//in case of Y or E, stop network manager and change MAC of stdwlan
-    if (c == 'Y') {
+	if (c == 'Y') {
 		if (access(AIRNETW, F_OK) == 0) {
 			fprintf(stdout, "\"%s\" is already stopped.\n", manag);
 		}
@@ -510,7 +515,7 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 			}
 		}
 		fprintf(stdout, "\nChanging MAC of interface \"%s\"...\n", stdwlan);
-		macchanger(stdwlan, TRUE);
+		macchanger(stdwlan, TRUE, NULL);
 	}
 	return c;
 }
@@ -542,7 +547,7 @@ static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
 						pidpath[strlen(pidpath)-1] = '\0';
 					if (strcmp(stdwlan, pidpath) != 0) {
 						fprintf(stdout, "\nRestoring permanent MAC of interface \"%s\"...\n", stdwlan);
-						macchanger(stdwlan, FALSE);
+						macchanger(stdwlan, FALSE, NULL);
 					}
 				}
 				fclose(fp);
@@ -560,9 +565,9 @@ static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
 			fclose(fp);
 		}
 	}
-    if (c == 'Y' || flag == FALSE) {
+	if (c == 'Y' || flag == FALSE) {
 		fprintf(stdout, "\nRestoring permanent MAC of interface \"%s\"...\n", stdwlan);
-		macchanger(stdwlan, FALSE);
+		macchanger(stdwlan, FALSE, NULL);
 		//if manag is "null" restore interface without restarting any service
 		if (strcmp(manag, "null") == 0) {
 			sprintf(pidpath, "ifconfig %s up", stdwlan);
@@ -582,27 +587,27 @@ static void netwCheck(char c, char *netwstart, char *stdwlan, char *manag)
 /* Stops monitor interface and removes PID file */
 static void stopMonitor(char *stopmon, char *pidpath)
 {
-    char clean[25]={"rm -f "};
+	char clean[25]={"rm -f "};
 
 	if (stopmon != NULL)
 		system(stopmon);
-    //remove PID file
-    strcat(clean, pidpath);
-    system(clean);
+	//remove PID file
+	strcat(clean, pidpath);
+	system(clean);
 }
 
 
 /* Check wheter to clean-exit when given "-1" string */
 static int checkExit(char c, char *string, char *stopmon, char *pidpath, char *netwstart, char *stdwlan, char *manag)
 {
-    if (!strcmp(string, "0")) {
-        fprintf(stdout, "Exiting...\n");
+	if (!strcmp(string, "0")) {
+		fprintf(stdout, "Exiting...\n");
 		stopMonitor(stopmon, pidpath);
-        netwCheck(c, netwstart, stdwlan, manag);
+		netwCheck(c, netwstart, stdwlan, manag);
 		fprintf(stdout, "\nTerminated.\n\n");
-        exit(EXIT_FAILURE);
-    }
-    return (EXIT_SUCCESS);
+		exit(EXIT_FAILURE);
+	}
+	return (EXIT_SUCCESS);
 }
 
 

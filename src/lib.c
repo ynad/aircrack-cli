@@ -1,19 +1,19 @@
 /**CFile***********************************************************************
 
-  FileName    [lib.c]
+   FileName    [lib.c]
 
-  PackageName [Aircrack-CLI]
+   PackageName [Aircrack-CLI]
 
-  Synopsis    [Aircrack Command Line Interface - Library functions]
+   Synopsis    [Aircrack Command Line Interface - Library functions]
 
-  Description [Command Line Interface for Aircrack-ng 
-  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+   Description [Command Line Interface for Aircrack-ng 
+   (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
 
-  Author      [ynad]
+   Author      [ynad]
 
-  License     [GPLv2, see LICENSE.md]
+   License     [GPLv2, see LICENSE.md]
   
-  Revision    [2014-03-01]
+   Revision    [2014-06-23]
 
 ******************************************************************************/
 
@@ -79,7 +79,7 @@ char setDistro(char *stdwlan, char *netwstart, char *netwstop, char *manag)
 		fclose(fp);
 	}
 	//network-manager
-    else if (access("/usr/sbin/NetworkManager", F_OK) == 0) {
+	else if (access("/usr/sbin/NetworkManager", F_OK) == 0) {
 		if (id == 'y' || id == 'a')
 			strcpy(manag, "NetworkManager");
 		else
@@ -126,17 +126,17 @@ char setDistro(char *stdwlan, char *netwstart, char *netwstop, char *manag)
 /* PID files handling */
 void pidOpen(char *inmon, char *pidpath, char *stdwlan)
 {
-    FILE *fpid;
+	FILE *fpid;
 
 	//clear error value
 	errno = 0;
 
-    while ((fpid = fopen(pidpath, "r")) != NULL)     //if NULL I found the next free PID
-        pidpath[strlen(pidpath)-1]++;
-    inmon[strlen(inmon)-1] = pidpath[strlen(pidpath)-1];    //setting monitor interface number
+	while ((fpid = fopen(pidpath, "r")) != NULL)     //if NULL I found the next free PID
+		pidpath[strlen(pidpath)-1]++;
+	inmon[strlen(inmon)-1] = pidpath[strlen(pidpath)-1];    //setting monitor interface number
 
-    if ((fpid = fopen(pidpath, "w")) == NULL)
-        fprintf(stderr, "Warning: Unable to write PID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", pidpath, strerror(errno));
+	if ((fpid = fopen(pidpath, "w")) == NULL)
+		fprintf(stderr, "Warning: Unable to write PID file \"%s\" (%s), this may cause problems running multiple instances of this program!\n\n", pidpath, strerror(errno));
 	else {
 		fprintf(fpid, "%s\n", stdwlan);
 		fclose(fpid);
@@ -174,24 +174,49 @@ int checkMac(char *mac)
 
 
 /* MAC address modifier */
-void macchanger(char *inmon, int flag)
+void macchanger(char *inmon, int flag, char *monmac)
 {
-    char tmp[25];
+	char tmp[25], buf[BUFF];
+	FILE *fp;
+	int i;
 
-    //shutting down interface
-    sprintf(tmp, "ifconfig %s down", inmon);
-    system(tmp);
+	//shutting down interface
+	sprintf(tmp, "ifconfig %s down", inmon);
+	system(tmp);
 
-    //changing MAC with a new one randomly generated or reset to permanent
+	//changing MAC with a new one randomly generated or reset to permanent
 	if (flag == FALSE)
 		sprintf(tmp, "macchanger -p %s", inmon);
-	else
-		sprintf(tmp, "macchanger -a %s", inmon);
-    system(tmp);
+	else {
+		if (monmac == NULL)
+			sprintf(tmp, "macchanger -A %s", inmon);
+		else
+			sprintf(tmp, "macchanger -A %s 1> /tmp/aircli-monmac", inmon);
+	}
+	system(tmp);
 
-    //restarting interface
-    //sprintf(tmp, "ifconfig %s up", inmon);
-    //system(tmp);
+	//parse new MAC of monitor interface (used in WEP mode)
+	if (monmac != NULL) {
+		//opening file with command output
+		if ((fp = fopen("/tmp/aircli-monmac", "r")) == NULL) {
+			fprintf(stderr, "Error opening file \"%s\": %s.\n", "/tmp/aircli-monmac", strerror(errno));
+			monmac[0] = '\0';
+			return;
+		}
+		for (i=0; i<3; i++) {
+			if (fgets(buf, BUFF, fp) == NULL) {
+				fprintf(stderr, "Error reading from file \"%s\": %s.\n", "/tmp/aircli-monmac", strerror(errno));
+				monmac[0] = '\0';
+				return;
+			}
+			fprintf(stdout, "%s", buf);
+		}
+		sscanf(buf, "%*s %*s %s", monmac);
+	}
+
+	//restarting interface
+	//sprintf(tmp, "ifconfig %s up", inmon);
+	//system(tmp);
 }
 
 
@@ -255,10 +280,10 @@ maclist_t deauthClient(char *bssid, char *inmon, maclist_t maclst)
 	while (sscanf(cmd, "%d", &i) != 1 && fprintf(stdout, "Type only integers\n"));
 
 	switch (i) {
-	    case 1:
+		case 1:
 			break;
 		//Add MACs
-	    case 2:
+		case 2:
 			maclst = getList(maclst);
 			//returns NULL if realloc fails
 			if (maclst == NULL) {
@@ -267,7 +292,7 @@ maclist_t deauthClient(char *bssid, char *inmon, maclist_t maclst)
 			}
 			break;
 		//Remove MAC (simplified)
-	    case 3:
+		case 3:
 			fprintf(stdout, "\nInput index you want to remove:\t");
 			do
 				fgets(cmd, BUFF-1, stdin);
@@ -280,10 +305,10 @@ maclist_t deauthClient(char *bssid, char *inmon, maclist_t maclst)
 				fprintf(stdout, "Invalid index.\n");
 			return maclst;
 			break;
-	    case 0:
+		case 0:
 			return maclst;
 			break;
-	    default:			
+		default:			
 			fprintf(stderr, "\nError: wrong option!\n");
 			return maclst;
 	}
@@ -594,11 +619,11 @@ int checkMon(char *mon)
 		fprintf(stderr, "Error: can't determine network intefaces.\n");
 	else {
 		token=strtok(iface, " ");
-        while (token && flag) {
+		while (token && flag) {
 			if (strcmp(token, mon) == 0)
 				flag = 0;
-            token=strtok(NULL, " ");
-        }
+			token=strtok(NULL, " ");
+		}
 		if (token == NULL && flag) {
 			fprintf(stderr, "Error: wireless interface \"%s\" not found, no such device.\n", mon);
 			free(iface);

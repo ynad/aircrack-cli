@@ -1,19 +1,19 @@
 /**CHeaderFile*****************************************************************
 
-  FileName    [lib.h]
+   FileName    [lib.h]
 
-  PackageName [Aircrack-CLI]
+   PackageName [Aircrack-CLI]
 
-  Synopsis    [Aircrack Command Line Interface - Library functions]
+   Synopsis    [Aircrack Command Line Interface - Library functions]
 
-  Description [Command Line Interface for Aircrack-ng 
-  (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
+   Description [Command Line Interface for Aircrack-ng 
+   (credits to Thomas d'Otreppe <tdotreppe@aircrack-ng.org>)]
 
-  Author      [ynad]
+   Author      [ynad]
 
-  License     [GPLv2, see LICENSE.md]
+   License     [GPLv2, see LICENSE.md]
 
-  Revision    [2014-03-01]
+   Revision    [2014-06-19]
 
 ******************************************************************************/
 
@@ -23,8 +23,8 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "1.2.2"
-#define BUILD "2014-03-01"
+#define VERS "1.2.3"
+#define BUILD "2014-06-23"
 
 #define BUFF 256
 #define MACLST 256
@@ -50,7 +50,7 @@ void pidOpen(char *, char *, char *);
 int checkMac(char *);
 
 /* MAC address modifier */
-void macchanger(char *, int);
+void macchanger(char *, int, char *);
 
 /* Memory release */
 void freeMem(maclist_t);

@@ -1,37 +1,48 @@
 ## Aircrack-CLI Makefile
 
+# Compilation variables
+CC=gcc
+CFLAGS=-Wall
+LDFLAGS=-lpthread
+INCL=-I src/
+DEBUG=-g -DDEBUG
+SOURCES1=src/aircrack-cli.c src/lib.c src/install.c
+OBJECTS1=obj/aircrack-cli.o obj/lib.o obj/install.o
+SOURCES2=src/airjammer.c src/lib.c src/install.c
+OBJECTS2=obj/airjammer.o obj/lib.o obj/install.o
+EXECUTABLE1=bin/aircrack-cli.bin
+EXECUTABLE2=bin/airjammer.bin
+
 target:
 	# Main module - Object
-	gcc -Wall -I src/ -c src/aircrack-cli.c src/lib.c src/install.c
+	$(CC) $(CFLAGS) $(INCL) -c $(SOURCES1)
 	# Secondary module - Object
-	gcc -Wall -I src/ -c src/airjammer.c src/lib.c src/install.c -lpthread
-	mkdir -p obj
-	mv *.o obj
-
-debug:
-	# Main module - DEBUG mode
-	gcc -Wall -I src/ -c src/aircrack-cli.c src/lib.c src/install.c -DDEBUG -g
-	# Secondary module - DEBUG mode
-	gcc -Wall -I src/ -c src/airjammer.c src/lib.c src/install.c -lpthread -DDEBUG -g
+	$(CC) $(CFLAGS) $(INCL) -c $(SOURCES2) $(LDFLAGS)
 	mkdir -p obj
 	mv *.o obj
 
 install: target
 	mkdir -p bin
 	# Main module - Executable
-	gcc obj/aircrack-cli.o obj/lib.o obj/install.o -o bin/aircrack-cli.bin
+	$(CC) $(CFLAGS) $(OBJECTS1) -o $(EXECUTABLE1)
 	# Secondary module - Executable
-	gcc obj/airjammer.o obj/lib.o obj/install.o -o bin/airjammer.bin -lpthread
+	$(CC) $(CFLAGS) $(OBJECTS2) -o $(EXECUTABLE2) $(LDFLAGS)
 
-dbginstall: debug
+debug:
+	mkdir -p obj
 	mkdir -p bin
-	# Main module - Executable
-	gcc obj/aircrack-cli.o obj/lib.o obj/install.o -o bin/aircrack-cli.bin
-	# Secondary module - Executable
-	gcc obj/airjammer.o obj/lib.o obj/install.o -o bin/airjammer.bin -lpthread
+	# Main module - DEBUG mode
+	$(CC) $(CFLAGS) $(INCL) -c $(SOURCES1) $(DEBUG)
+	# Secondary module - DEBUG mode
+	$(CC) $(CFLAGS) $(INCL) -c $(SOURCES2) $(LDFLAGS) $(DEBUG)
+	mv *.o obj
+	$(CC) $(CFLAGS) $(OBJECTS1) -o $(EXECUTABLE1) $(DEBUG)
+	$(CC) $(CFLAGS) $(OBJECTS2) -o $(EXECUTABLE2) $(LDFLAGS) $(DEBUG)
+
+.PHONY: clean
 
 clean:
-	rm -rf obj
+	rm -rf obj *.o
 
 uninstall: clean
 	rm -f bin/*
