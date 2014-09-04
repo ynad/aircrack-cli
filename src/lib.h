@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
 
-   Revision    [2014-06-19]
+   Revision    [2014-08-23]
 
 ******************************************************************************/
 
@@ -24,7 +24,7 @@
 
 //Version code - keep UPDATED!
 #define VERS "1.2.3"
-#define BUILD "2014-06-23"
+#define BUILD "2014-08-23"
 
 #define BUFF 256
 #define MACLST 256
@@ -51,6 +51,9 @@ int checkMac(char *);
 
 /* MAC address modifier */
 void macchanger(char *, int, char *);
+
+/* Little workaround, put up and down wireless interface */
+void ifconfUpdown(char *wl);
 
 /* Memory release */
 void freeMem(maclist_t);

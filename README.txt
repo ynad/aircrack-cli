@@ -3,11 +3,11 @@ Aircrack-CLI - Command Line Interface
 
 Version:
 --------
-1.2.3 (2014-06-23)
+1.2.3 (2014-08-23)
 See ChangeLog for details. 
 
     TODO:
-    
+    - integration of Reaver
 
     BUGS:
 
@@ -45,6 +45,7 @@ For compiling and installing Aircrack-ng:
   * libssl-dev/openssl-devel
   * libnl-3-dev/libnl3-devel
   * libnl-genl-3-dev/libnl-genl3-devel
+  * pkg-config
 
   - Compile:
       `make`

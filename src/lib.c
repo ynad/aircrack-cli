@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-06-23]
+   Revision    [2014-08-23]
 
 ******************************************************************************/
 
@@ -214,9 +214,26 @@ void macchanger(char *inmon, int flag, char *monmac)
 		sscanf(buf, "%*s %*s %s", monmac);
 	}
 
-	//restarting interface
+	//restarting interface - not needed
 	//sprintf(tmp, "ifconfig %s up", inmon);
 	//system(tmp);
+}
+
+
+/* Little workaround to avoid capturing only broadcast traffic: put up and down wireless interface */
+void ifconfUpdown(char *wl)
+{
+	char tmp[25];
+
+	//restore interface
+	sprintf(tmp, "ifconfig %s up", wl);
+	system(tmp);
+
+	usleep(500);
+
+	//and put down again
+	sprintf(tmp, "ifconfig %s down", wl);
+	system(tmp);
 }
 
 

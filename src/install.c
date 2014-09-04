@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-06-10]
+   Revision    [2014-08-23]
 
 ******************************************************************************/
 
@@ -63,6 +63,7 @@ int depInstall()
 			"\t* build-essential\n"
 			"\t* libssl-dev/openssl-devel\n"
 			"\t* libnl-3-dev, libnl-genl-3-dev\n"
+			"\t* pkg-config\n"
 			"\t* xterm\n"
 			"\t* wget\n"
 			"\t* macchanger\n"
@@ -82,12 +83,12 @@ int depInstall()
 		fprintf(stdout, "\nInstalling dependencies...\n\n");
 		//Ubuntu
 		if (id == 'u')
-			system("apt-get install build-essential libssl-dev libnl-3-dev libnl-genl-3-dev xterm wget macchanger --install-suggests -y --force-yes");
+			system("apt-get install build-essential libssl-dev libnl-3-dev libnl-genl-3-dev pkg-config xterm wget macchanger --install-suggests -y --force-yes");
 		//yum-based
 		else if (id == 'y')
-			system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel libnl3-devel libnl-genl3-devel xterm wget macchanger -y");
+			system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel libnl3-devel libnl-genl3-devel pkg-config xterm wget macchanger -y");
 		else if (id == 'a')
-			system("pacman -S base-devel openssl libnl xterm wget macchanger --noconfirm");
+			system("pacman -S base-devel openssl libnl pkg-config xterm wget macchanger --noconfirm");
 		else {
 			fprintf(stderr, "ERROR\n");
 			return (EXIT_FAILURE);

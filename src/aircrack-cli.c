@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-06-19]
+   Revision    [2014-08-24]
 
 ******************************************************************************/
 
@@ -114,6 +114,9 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
 	macchanger(inmon, TRUE, NULL);
 
+	//workaround to avoid capturing only broadcast traffic
+	if (c == 'Y')
+		ifconfUpdown(stdwlan);
 	//set stop monitor
 	strcat(stopmon, inmon);
 
@@ -188,6 +191,10 @@ int main(int argc, char *argv[])
 		macchanger(inmon, TRUE, NULL);
 		monmac[0] = '\0';
 	}
+
+	//workaround to avoid capturing only broadcast traffic
+	if (c == 'Y')
+		ifconfUpdown(stdwlan);
 
 	//output file
 	fprintf(stdout, "\nOutput file (0 to clean-exit):\t");
