@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
 
-   Revision    [2014-08-23]
+   Revision    [2014-09-22]
 
 ******************************************************************************/
 
@@ -23,8 +23,8 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "1.2.3"
-#define BUILD "2014-08-23"
+#define VERS "1.2.4"
+#define BUILD "2014-10-25"
 
 #define BUFF 256
 #define MACLST 256
@@ -60,6 +60,12 @@ void freeMem(maclist_t);
 
 /* Deauthenticate list of clients */
 maclist_t deauthClient(char *, char *, maclist_t);
+
+/* Wash interface */
+void wash(char *, char *);
+
+/* Reaver interface */
+void reaver(char *, char *, char *);
 
 /* Execute fake authentication (WEP networks) */
 void fakeAuth(char *, char *, char *, int);

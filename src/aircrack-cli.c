@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-08-24]
+   Revision    [2014-10-24]
 
 ******************************************************************************/
 
@@ -45,7 +45,7 @@ static void printHeader();
 static int argCheck(int, char **, char, char *, char *);
 static void printSyntax(char *, char, char *);
 static void installer();
-static void printMenu(int, char *, char *, char *, char *, char *, maclist_t);
+static void printMenu(int, char *, char *, char *, char *, char *, char *, maclist_t);
 static int jammer(char *, char *, char *, maclist_t, int);
 static char netwPrompt(char *, char *, char *, char *);
 static void netwCheck(char, char *, char *, char *);
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	maclist_t maclst=NULL;
 
 	//program strings
-	char c, id, buff[BUFF], can[BUFF], bssid[BUFF], encr[BUFF], fout[BUFF], manag[BUFF], inmon[BUFF]={MON}, monmac[BUFF], pidpath[BUFF]={PIDPTH}, stdwlan[BUFF], netwstart[BUFF], netwstop[BUFF];
+	char ws, tmp[BUFF], c, id, buff[BUFF], can[BUFF], bssid[BUFF], encr[BUFF], fout[BUFF], manag[BUFF], inmon[BUFF]={MON}, monmac[BUFF], pidpath[BUFF]={PIDPTH}, stdwlan[BUFF], netwstart[BUFF], netwstop[BUFF];
 	char startmon[BUFF]={"airmon-ng start"}, stopmon[BUFF]={"airmon-ng stop "};
 	char montmp[BUFF]={"xterm 2> /dev/null -T MonitorTemp -e airodump-ng"};
 	char scanmon[BUFF]={"xterm 2> /dev/null -T MonitorHandshake -e airodump-ng --bssid"};
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "Changing MAC of interface \"%s\"...\n", inmon);
 	macchanger(inmon, TRUE, NULL);
 
-	//workaround to avoid capturing only broadcast traffic
+	//workaround to avoid capturing only broadcast traffic (in some Kernel editions)
 	if (c == 'Y')
 		ifconfUpdown(stdwlan);
 	//set stop monitor
@@ -123,6 +123,20 @@ int main(int argc, char *argv[])
 	//network scanner in detached terminal
 	sprintf(montmp, "%s %s &", montmp, inmon);
 	system(montmp);
+
+	//ask wheter to open Wash monitor (WPS detector, included in Reaver)
+	fprintf(stdout, "\nDo you want to open Wash monitor (WPS detector)?  [Y-N] (0 to clean-exit)\n");
+	do {
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%s", tmp);
+		if (sscanf(tmp, "%c", &ws) != 1)
+			ws = '\0';
+		else
+			ws = toupper(ws);
+	} while (ws != 'Y' && ws != 'N' && ws != '0' && fprintf(stdout, "Type only [Y-N]\n"));
+	checkExit(c, tmp, stopmon, pidpath, netwstart, stdwlan, manag);
+	if (ws == 'Y')
+		wash(inmon, NULL);
 
 	//data acquisition
 	fprintf(stdout, "\nChannel number [-1 if none] (0 to clean-exit):\t");
@@ -211,7 +225,7 @@ int main(int argc, char *argv[])
 	system(scanmon);
 
 	//ciclic menu and action chooser
-	printMenu(opz, argv[0], fout, bssid, inmon, monmac, maclst);
+	printMenu(opz, argv[0], fout, can, bssid, inmon, monmac, maclst);
 
 
 	/** FINAL STAGE **/
@@ -322,13 +336,25 @@ static void installer()
 		c = toupper(c);
 	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
 	if (c == 'Y')
-		if (akngInstall())
+		if (akngInstall("aircrack-ng"))
 			fprintf(stdout, "Attention: \"Aircrack-ng\" NOT installed!\n\n");
+	c = '0';
+
+	//reaver-wps
+	fprintf(stdout, "\nDownload and install \"Reaver-WPS\"?  [Y-N]\n");
+	do {
+		fgets(buff, BUFF-1, stdin);
+		sscanf(buff, "%c", &c);
+		c = toupper(c);
+	} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
+	if (c == 'Y')
+		if (akngInstall("reaver-wps"))
+			fprintf(stdout, "Attention: \"Reaver-WPS\" NOT installed!\n\n");
 }
 
 
 /* Ciclic print menu and exec actions */
-static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmon, char *monmac, maclist_t maclst)
+static void printMenu(int mode, char *argv0, char *fout, char *can, char *bssid, char *inmon, char *monmac, maclist_t maclst)
 {
 	int opz = -1;
 	char dict[BUFF], buff[BUFF];
@@ -338,7 +364,9 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 		fprintf(stdout, "\n\nChoose an action:\n=================\n");
 		fprintf(stdout, "\t%2d. De-authenticate client(s)\n\t%2d. Jammer (MAC list)\n\t%2d. Jammer (broadcast)\n", 1, 2, 3);
 		if (mode == WPA) {
-			fprintf(stdout, "\t%2d. Start cracking on current acquired packets (WPA)\n", 4);
+			fprintf(stdout, "\t%2d. Start cracking on current acquired packets (WPA)\n"
+					"\t%2d. Reaver (WPS bruteforce)\n"
+					"\t%2d. Open Wash monitor on current channel (WPS detector)\n", 4, 5, 6);
 		}
 		else if (mode == WEP) {
 			fprintf(stdout, "\t%2d. Fake authentication (single)\n\t%2d. Fake authentication (keep-alive)\n"
@@ -346,7 +374,7 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 					"\t%2d. Start cracking on current acquired packets (WEP - PTW method)\n"
 					"\t%2d. Start cracking on current acquired packets (WEP - FMS/Korek method)\n", 4, 5, 6, 7, 8,9);
 		}
-		fprintf(stdout, "\t%2d. Stop scanner\n", 0);
+		fprintf(stdout, "\n\t%2d. Stop scanner\n", 0);
 		do
 			fgets(buff, BUFF-1, stdin);
 		while (sscanf(buff, "%d", &opz) != 1 && fprintf(stdout, "Type only integers\n"));
@@ -381,7 +409,11 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 				fprintf(stdout, "\nError: unexpected option!\n");
 			break;
 		case 5:
-			if (mode == WEP) {
+			if (mode == WPA) {
+				fprintf(stdout, "Launching Reaver...\n");
+				reaver(inmon, bssid, can);
+			}
+			else if (mode == WEP) {
 				fprintf(stdout, "Running fake authentication (keep-alive)...\n");
 				fakeAuth(bssid, inmon, monmac, 2);
 			}
@@ -389,7 +421,11 @@ static void printMenu(int mode, char *argv0, char *fout, char *bssid, char *inmo
 				fprintf(stdout, "\nError: unexpected option!\n");
 			break;
 		case 6:
-			if (mode == WEP) {
+			if (mode == WPA) {
+				fprintf(stdout, "Launching Wash...\n");
+				wash(inmon, can);
+			}
+			else if (mode == WEP) {
 				fprintf(stdout, "Running ARP request replay...\n");
 				ARPreqReplay(bssid, inmon, monmac);
 			}
@@ -484,7 +520,7 @@ static char netwPrompt(char *netwstart, char *netwstop, char *stdwlan, char *man
 
 	c = '0';
 	//stop potentially unwanted processes
-	fprintf(stdout, "\nDo you want to stop \"%s\" (E to input different manager)?  [Y-N]\n", manag);
+	fprintf(stdout, "\nDo you want to stop \"%s\"?  [Y-N]\n(\"E\" to input different manager or kill wireless interface \"%s\")\n", manag, stdwlan);
 	do {
 		fgets(tmp, BUFF-1, stdin);
 		sscanf(tmp, "%c", &c);

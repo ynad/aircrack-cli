@@ -3,11 +3,10 @@ Aircrack-CLI - Command Line Interface
 
 Version:
 --------
-1.2.3 (2014-08-23)
+1.2.4 (2014-10-25)
 See ChangeLog for details. 
 
     TODO:
-    - integration of Reaver
 
     BUGS:
 
@@ -30,6 +29,7 @@ List of features:
   - automatic recognition of: OS, network manager in use and wireless interface to use
   - start/stop network manager if requested by user, to avoid conflicts with monitor interfaces
   - online version checks
+  - Reaver: capable to launch brute force attack against Wifi Protected Setup (WPS), using Reaver (visit: https://code.google.com/p/reaver-wps/ , all credits go to project's creators)
 
 
 Installation:
@@ -41,10 +41,12 @@ System requirements (automatic install provided):
   * wget
   * macchanger
 
-For compiling and installing Aircrack-ng:
+For compiling and installing Aircrack-ng and Reaver-WPS:
   * libssl-dev/openssl-devel
   * libnl-3-dev/libnl3-devel
   * libnl-genl-3-dev/libnl-genl3-devel
+  * libpcap0.8(-dev)
+  * libsqlite3-0(-dev)
   * pkg-config
 
   - Compile:
@@ -58,6 +60,15 @@ For compiling and installing Aircrack-ng:
 
   - Uninstall:
       `make uninstall`
+
+
+Notes:
+------
+Reaver-WPS seems to be not working with the new version of libpcap & libpcap-dev, probably for some incompatibility or some bugs.
+You can downgrade them to version 1.4.0-2 with the provided packages (debian-like) under "util" or downloading from here:
+http://mirrors.kernel.org/ubuntu/pool/main/libp/libpcap/
+Other packages may be found in software resources of each distro.
+(Source: https://code.google.com/p/reaver-wps/issues/detail?id=217#c19)
 
 
 License:

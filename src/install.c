@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-08-23]
+   Revision    [2014-10-24]
 
 ******************************************************************************/
 
@@ -39,10 +39,13 @@
 #define FALSE 0
 #define TRUE 1
 
-#define TMPDIR "/tmp/ngtmp/"
+#define TMPDIR "util/"
 #define AIRNAME "aircrack-ng-1.2-beta3.tar.gz"
+#define AIRURL "http://download.aircrack-ng.org/"
 #define AIRCODE "1.2-beta3"
 #define AIRVERS "https://raw.github.com/aircrack-ng/aircrack-ng/master/VERSION"
+#define REAVNAME "reaver-1.4.tar.gz"
+#define REAVURL "https://reaver-wps.googlecode.com/files/"
 #define DISTRO "/proc/version"
 #define UBUNTU "Ubuntu"
 #define DEBIAN "Debian"
@@ -63,6 +66,8 @@ int depInstall()
 			"\t* build-essential\n"
 			"\t* libssl-dev/openssl-devel\n"
 			"\t* libnl-3-dev, libnl-genl-3-dev\n"
+			"\t* libpcap(-dev)\n"
+			"\t* libsqlite3(-dev)\n"
 			"\t* pkg-config\n"
 			"\t* xterm\n"
 			"\t* wget\n"
@@ -83,12 +88,13 @@ int depInstall()
 		fprintf(stdout, "\nInstalling dependencies...\n\n");
 		//Ubuntu
 		if (id == 'u')
-			system("apt-get install build-essential libssl-dev libnl-3-dev libnl-genl-3-dev pkg-config xterm wget macchanger --install-suggests -y --force-yes");
+			system("apt-get install build-essential libssl-dev libnl-3-dev libnl-genl-3-dev libpcap0.8 libpcap0.8-dev libsqlite3-0 libsqlite3-dev pkg-config xterm wget macchanger --install-suggests -y --force-yes");
 		//yum-based
 		else if (id == 'y')
-			system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel libnl3-devel libnl-genl3-devel pkg-config xterm wget macchanger -y");
+			system("yum install make automake gcc gcc-c++ kernel-devel openssl-devel libnl3-devel libpcap libpcap-devel libsqlite3x libsqlite3x-devel xterm wget macchanger -y");
+		//arch
 		else if (id == 'a')
-			system("pacman -S base-devel openssl libnl pkg-config xterm wget macchanger --noconfirm");
+			system("pacman -S base-devel openssl libnl libpcap lib32-sqlite pkg-config xterm wget macchanger --noconfirm");
 		else {
 			fprintf(stderr, "ERROR\n");
 			return (EXIT_FAILURE);
@@ -141,11 +147,11 @@ char checkDistro()
 }
 
 
-/* Aircrack-ng downloader and installer */
-int akngInstall()
+/* Source downloader, compiler and installer */
+int akngInstall(char *mode)
 {
 	int go=TRUE;
-	char c='0', buff[BUFF], cgdir[BUFF], vers[BUFF], command[BUFF]={"wget http://download.aircrack-ng.org/"};
+	char c='0', buff[BUFF], cgdir[BUFF], tmpdir[BUFF], vers[BUFF], command[BUFF]={"wget"};
 	DIR *dp;
 	FILE *fp;
 	struct dirent *dirp;
@@ -154,48 +160,60 @@ int akngInstall()
 	//clear error value
 	errno = 0;
 
+	//make and move to temp dir
 	if (getcwd(cgdir, BUFF) == NULL) {
 		fprintf(stderr, "Error reading current directory: %s.\n", strerror(errno));
 		return (EXIT_FAILURE);
 	}
-	if (mkdir(TMPDIR, S_IRWXU) == -1) {
-		fprintf(stderr, "Error creating temporary directory \"%s\": %s\n", TMPDIR, strerror(errno));
+	mkdir(TMPDIR, S_IRWXU);
+	//tmp dir with full path
+	sprintf(tmpdir, "%s%s/", TMPDIR, mode);
+
+	if (mkdir(tmpdir, S_IRWXU) == -1) {
+		fprintf(stderr, "Error creating temporary directory \"%s\": %s\n", tmpdir, strerror(errno));
 		return (EXIT_FAILURE);
 	}
-	if (chdir(TMPDIR) == -1) {
-		fprintf(stderr, "Error moving to directory \"%s\": %s.\n", TMPDIR, strerror(errno));
+	if (chdir(tmpdir) == -1) {
+		fprintf(stderr, "Error moving to directory \"%s\": %s.\n", tmpdir, strerror(errno));
 		return (EXIT_FAILURE);
 	}
 
 	fprintf(stdout, "\n\tDownloading and extracting source code...\n\n");
 
-	//version check - errors muted
-	sprintf(vers, "wget %s -O /tmp/AIRVERSION -q", AIRVERS);
-	system(vers);
-	if ((fp = fopen("/tmp/AIRVERSION", "r")) != NULL) {
-		if (fscanf(fp, "%s", vers) != 1);
-			//fprintf(stderr, "No data collected or no internet connection.\n\n");
-		else {
-			if (strcmp(vers, AIRCODE) > 0) {
-				fprintf(stdout, "\nA newer version of \"Aircrack-ng\" is available (%s), do you want to use it? (default is %s)  [Y-N]\n", vers, AIRCODE);
-				do {
-					fgets(buff, BUFF-1, stdin);
-					sscanf(buff, "%c", &c);
-					c = toupper(c);
-				} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
+	//version check - errors muted (only for aircrack-ng)
+	if (strcmp(mode, "aircrack-ng") == 0) {
+		sprintf(vers, "wget %s -O /tmp/AIRVERSION -q", AIRVERS);
+		system(vers);
+		if ((fp = fopen("/tmp/AIRVERSION", "r")) != NULL) {
+			if (fscanf(fp, "%s", vers) != 1);
+				//fprintf(stderr, "No data collected or no internet connection.\n\n");
+			else {
+				if (strcmp(vers, AIRCODE) > 0) {
+					fprintf(stdout, "\nA newer version of \"Aircrack-ng\" is available (%s), do you want to use it? (default is %s)  [Y-N]\n", vers, AIRCODE);
+					do {
+						fgets(buff, BUFF-1, stdin);
+						sscanf(buff, "%c", &c);
+						c = toupper(c);
+					} while (c != 'Y' && c != 'N' && fprintf(stdout, "Type only [Y-N]\n"));
+				}
 			}
+			fclose(fp);
 		}
-		fclose(fp);
+		//else
+			//fprintf(stderr, "Error reading from file \"%s\": %s\n", "/tmp/AIRVERSION", strerror(errno));
+		system("rm -f /tmp/AIRVERSION");
 	}
-	//else
-		//fprintf(stderr, "Error reading from file \"%s\": %s\n", "/tmp/AIRVERSION", strerror(errno));
-	system("rm -f /tmp/AIRVERSION");
 
 	//download chosen version
-	if (c == 'Y')
-		sprintf(command, "%saircrack-ng-%s.tar.gz && tar -zxvf aircrack-ng-%s.tar.gz 1> tar.log", command, vers, vers);
-	else
-		sprintf(command, "%s%s && tar -zxvf %s 1> tar.log", command, AIRNAME, AIRNAME);
+	if (strcmp(mode, "aircrack-ng") == 0) {
+		if (c == 'Y')
+			sprintf(command, "%s %saircrack-ng-%s.tar.gz && tar -zxvf aircrack-ng-%s.tar.gz 1> tar.log", command, AIRURL, vers, vers);
+		else
+			sprintf(command, "%s %s%s && tar -zxvf %s 1> tar.log", command, AIRURL, AIRNAME, AIRNAME);
+	}
+	else if (strcmp(mode, "reaver-wps") == 0) {
+		sprintf(command, "%s %s%s && tar -zxvf %s 1> tar.log", command, REAVURL, REAVNAME, REAVNAME);
+	}
 	system(command);
 
 	fprintf(stdout, "\nConfirm installation?  [Y-N]\n");
@@ -208,12 +226,12 @@ int akngInstall()
 	if( c=='Y' ) {
 		fprintf(stdout, "\tCompiling and installing... (in case of errors check dependencies)\n\n");
 
-		if ( (dp = opendir(TMPDIR)) == NULL ) {
-			fprintf(stderr, "Error opening directory \"%s\": %s.\n", TMPDIR, strerror(errno));
+		if ( (dp = opendir(".")) == NULL ) {
+			fprintf(stderr, "Error opening directory \"%s\": %s.\n", tmpdir, strerror(errno));
 			return (EXIT_FAILURE);
 		}
 		while ((dirp = readdir(dp)) != NULL && go == TRUE) {    //search extracted dir and move to it
-			sprintf(command, "%s%s", TMPDIR, dirp->d_name);
+			sprintf(command, "%s", dirp->d_name);
 			if (lstat(command, &statbuf) < 0) {
 				fprintf(stderr, "Error reading stat (%s): %s.\n", command, strerror(errno));
 				return (EXIT_FAILURE);
@@ -228,10 +246,14 @@ int akngInstall()
 		}
 
 		//complide and install
-		system("make && make install");
+		if (strcmp(mode, "aircrack-ng") == 0)
+			system("make && make install");
+
+		else if (strcmp(mode, "reaver-wps") == 0)
+			system("cd src && ./configure && make && make install");
 
 		if (closedir(dp) < 0) {
-			fprintf(stderr, "Error closing directory \"%s\": %s\n", TMPDIR, strerror(errno));
+			fprintf(stderr, "Error closing directory \"%s\": %s\n", tmpdir, strerror(errno));
 			//return (EXIT_FAILURE);
 		}
 		go = FALSE;
@@ -241,9 +263,9 @@ int akngInstall()
 		fprintf(stderr, "Error moving to directory \"%s\": %s.\n", cgdir, strerror(errno));
 		return (EXIT_FAILURE);
 	}
-	fprintf(stdout, "\n\tRemoving temporary directory...\n");
-	sprintf(command, "rm -fr %s", TMPDIR);
-	system(command);
+	/*fprintf(stdout, "\n\tRemoving temporary directory...\n");
+	sprintf(command, "rm -fr %s", tmpdir);
+	system(command);*/
 
 	if (go == TRUE) {
 		fprintf(stdout, "\n INSTALLATION ABORTED!\n");

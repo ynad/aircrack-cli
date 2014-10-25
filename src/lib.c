@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-08-23]
+   Revision    [2014-09-22]
 
 ******************************************************************************/
 
@@ -220,7 +220,7 @@ void macchanger(char *inmon, int flag, char *monmac)
 }
 
 
-/* Little workaround to avoid capturing only broadcast traffic: put up and down wireless interface */
+/* Little workaround to avoid capturing only broadcast traffic (in some Kernel editions): put up and down wireless interface */
 void ifconfUpdown(char *wl)
 {
 	char tmp[25];
@@ -401,6 +401,29 @@ static maclist_t getList(maclist_t maclst)
 		}
 	}
 	return maclst;
+}
+
+
+/* Wash interface */
+void wash(char *inmon, char *can)
+{
+	char cmd[BUFF];
+
+	if (can == NULL)
+		sprintf(cmd, "xterm 2> /dev/null -T Wash -e \"wash -i %s -C ; exit\" &", inmon);
+	else
+		sprintf(cmd, "xterm 2> /dev/null -T Wash -e \"wash -i %s -c %s -C ; exit\" &", inmon, can);
+	system(cmd);
+}
+
+
+/* Reaver interface */
+void reaver(char *inmon, char *bssid, char *can)
+{
+	char cmd[BUFF];
+
+	sprintf(cmd, "xterm 2> /dev/null -T Reaver -e \"reaver -i %s -b %s -c %s -S -L -vv ; read\" &", inmon, bssid, can);
+	system(cmd);
 }
 
 

@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
 
-   Revision    [2013-11-22]
+   Revision    [2014-10-24]
 
 ******************************************************************************/
 
@@ -29,7 +29,7 @@ int depInstall();
 char checkDistro();
 
 /* Aircrack-ng downloader and installer */
-int akngInstall();
+int akngInstall(char *);
 
 
 #endif // INSTALL_H_INCLUDED
