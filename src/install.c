@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-10-24]
+   Revision    [2015-01-17]
 
 ******************************************************************************/
 
@@ -40,9 +40,9 @@
 #define TRUE 1
 
 #define TMPDIR "util/"
-#define AIRNAME "aircrack-ng-1.2-beta3.tar.gz"
+#define AIRNAME "aircrack-ng-1.2-rc1.tar.gz"
 #define AIRURL "http://download.aircrack-ng.org/"
-#define AIRCODE "1.2-beta3"
+#define AIRCODE "1.2-rc1"
 #define AIRVERS "https://raw.github.com/aircrack-ng/aircrack-ng/master/VERSION"
 #define REAVNAME "reaver-1.4.tar.gz"
 #define REAVURL "https://reaver-wps.googlecode.com/files/"
