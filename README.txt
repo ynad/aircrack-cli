@@ -52,10 +52,10 @@ For compiling and installing Aircrack-ng and Reaver-WPS:
   - Compile:
       `make`
 
-  - Compile and install:
-      `make install`
+  - Then install:
+      `sudo make install`
 
-  - Remove only objects:
+  - Remove build files:
       `make clean`
 
   - Uninstall:
