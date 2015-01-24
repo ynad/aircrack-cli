@@ -3,7 +3,7 @@ Aircrack-CLI - Command Line Interface
 
 Version:
 --------
-1.2.4 (2014-10-25)
+1.2.5 (2015-01-24)
 See ChangeLog for details. 
 
     TODO:
@@ -60,6 +60,19 @@ For compiling and installing Aircrack-ng and Reaver-WPS:
 
   - Uninstall:
       `make uninstall`
+
+
+Usage:
+------
+If launching from source folder:
+$ sudo ./bin/aircrack-cli.bin [N] [WLAN-IF]
+
+Or if it was installed to system path:
+$ sudo aircrack-cli.bin [N] [WLAN-IF]
+
+Optional parameters:
+	[N]	    skips installation of dependencies
+	[WLAN-IF]   specifies wireless interface (if different from system default)
 
 
 Notes:

@@ -1,3 +1,7 @@
+Version 1.2.5 (changes from 1.2.4) - Released 24/01/2015:
+* Binaries files are now copied to system path
+* Fixed launch path of AirJammer
+
 Version 1.2.4 (changes from 1.2.3) - Released 25/10/2014:
 * Support for Reaver: brute force attack against Wifi Protected Setup (WPS)
 * Installation of Reaver from source code

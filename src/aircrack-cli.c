@@ -13,7 +13,7 @@
 
    License     [GPLv2, see LICENSE.md]
   
-   Revision    [2014-10-24]
+   Revision    [2015-01-24]
 
 ******************************************************************************/
 
@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
@@ -469,8 +470,9 @@ static void printMenu(int mode, char *argv0, char *fout, char *can, char *bssid,
 /* Interface to AirJammer */
 static int jammer(char *argv0, char *bssid, char *inmon, maclist_t maclst, int flag)
 {
-	char cmd[BUFF], path[BUFF], argvz[BUFF], list[]={"/tmp/maclist.txt"};
+	char cmd[BUFF], path[BUFF], argvz[BUFF], cwd[BUFF], list[]={"/tmp/maclist.txt"};
 	int i, stop=0;
+	FILE *fp;
 
 	//clear error value
 	errno = 0;
@@ -485,24 +487,33 @@ static int jammer(char *argv0, char *bssid, char *inmon, maclist_t maclst, int f
 		}
 	}
 	
-	if (getcwd(path, BUFF) == NULL) {
-		fprintf(stderr, "\nError reading current path: %s\n", strerror(errno));
-		return (EXIT_FAILURE);
-	}
-	//use a copy of argv[0], to not modify it
-	strcpy(argvz, argv0);
+	//if running from source folder, determine path of AirJammer
+	if ((fp = fopen("bin/airjammer.bin", "rb")) != NULL || (fp = fopen("airjammer.bin", "rb")) != NULL) {
+		fclose(fp);
 
-	//calculate path of AirJammer executable
-	for (i=strlen(argvz)-1; i>0 && !stop; i--) {
-		if (argvz[i] == '/') {
-			argvz[i] = '\0';
-			stop = 1;
+		if (getcwd(cwd, BUFF) == NULL) {
+			fprintf(stderr, "\nError reading current path: %s\n", strerror(errno));
+			return (EXIT_FAILURE);
 		}
+		//use a copy of argv[0], to not modify it
+		strcpy(argvz, argv0);
+
+		//determine path of AirJammer executable
+		for (i=strlen(argvz)-1; i>0 && !stop; i--) {
+			if (argvz[i] == '/') {
+				argvz[i] = '\0';
+				stop = 1;
+			}
+		}
+		sprintf(path, "%s/%s/", cwd, argvz);
 	}
+	else	//running from system path
+		path[0] = '\0';
+
 	if (flag == 2)
-		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %s/%s/airjammer.bin %s %s &", path, argvz, bssid, inmon);
+		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %sairjammer.bin %s %s &", path, bssid, inmon);
 	else
-		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %s/%s/airjammer.bin %s %s %s &", path, argvz, bssid, inmon, list);
+		sprintf(cmd, "xterm 2> /dev/null -T AirJammer -e %sairjammer.bin %s %s %s &", path, bssid, inmon, list);
 	system(cmd);
 
 	return (EXIT_SUCCESS);

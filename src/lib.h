@@ -23,8 +23,8 @@
 
 
 //Version code - keep UPDATED!
-#define VERS "1.2.4"
-#define BUILD "2014-10-25"
+#define VERS "1.2.5"
+#define BUILD "2015-01-24"
 
 #define BUFF 256
 #define MACLST 256
